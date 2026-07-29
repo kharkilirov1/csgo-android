@@ -12,7 +12,7 @@
 
 #include "vgui_controls/Frame.h"
 #include "vgui/MouseCode.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "utlvector.h"
 
 

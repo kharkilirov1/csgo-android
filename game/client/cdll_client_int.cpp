@@ -100,7 +100,7 @@
 #include "matchmaking/imatchframework.h"
 #include "cdll_bounded_cvars.h"
 #include "matsys_controls/matsyscontrols.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "videocfg/videocfg.h"
 #include "tier2/tier2_logging.h"
 #include "Sprite.h"

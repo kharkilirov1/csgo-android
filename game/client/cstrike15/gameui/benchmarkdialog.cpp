@@ -7,7 +7,7 @@
 #include "benchmarkdialog.h"
 #include "engineinterface.h"
 #include "basepanel.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "tier1/convar.h"
 #include "filesystem.h"
 #include "vgui_controls/Button.h"

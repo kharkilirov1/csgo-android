@@ -12,7 +12,7 @@
 
 #include <vgui_controls/Panel.h>
 #include "hudelement.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 
 namespace vgui
 {

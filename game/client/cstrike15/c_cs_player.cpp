@@ -71,7 +71,7 @@
 #include "interfaces/interfaces.h"
 
 #include "gametypes.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "c_cs_team.h"
 
 #include "Scaleform/HUD/sfhudinfopanel.h"

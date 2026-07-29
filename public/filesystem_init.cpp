@@ -25,7 +25,7 @@
 #include "filesystem_init.h"
 #include "tier0/icommandline.h"
 #include "tier0/stacktools.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "appframework/IAppSystemGroup.h"
 #include "tier1/smartptr.h"
 #if defined( _X360 )

@@ -6,7 +6,7 @@
 
 #include "filesystem.h"
 #include "matsys_controls/baseassetpicker.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "tier1/utlntree.h"
 #include "tier1/utlrbtree.h"
 #include "vgui_controls/ListPanel.h"

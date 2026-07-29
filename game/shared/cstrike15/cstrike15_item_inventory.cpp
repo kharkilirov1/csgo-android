@@ -13,7 +13,7 @@
 #ifdef CLIENT_DLL
 #include "c_cs_player.h"
 #include "itempickup_scaleform.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
 #include "ienginevgui.h"
 #include "cs_gamerules.h"

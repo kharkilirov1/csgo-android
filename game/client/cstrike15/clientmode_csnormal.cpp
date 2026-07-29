@@ -41,7 +41,7 @@
 #include <imapoverview.h>
 #include "c_playerresource.h"
 #include "c_soundscape.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "text_message.h"
 #include "panelmetaclassmgr.h"
 #include "vguicenterprint.h"
@@ -70,7 +70,7 @@
 #include "gameui/basepanel.h"
 #include "gameui/uigamedata.h"
 #include "Scaleform/messagebox_scaleform.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #if defined ( _GAMECONSOLE )
 #include "GameUI/IGameUI.h"
 #include "GameUI/gameui_interface.h"

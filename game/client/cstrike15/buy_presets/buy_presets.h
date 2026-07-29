@@ -35,7 +35,7 @@
  */
 
 #include "weapon_csbase.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <utlvector.h>
 
 class BuyPreset;

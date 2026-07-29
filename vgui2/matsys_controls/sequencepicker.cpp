@@ -7,7 +7,7 @@
 #include "matsys_controls/sequencepicker.h"
 
 #include "tier1/utldict.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "studio.h"
 #include "bone_setup.h"
 #include "vgui/IInput.h"

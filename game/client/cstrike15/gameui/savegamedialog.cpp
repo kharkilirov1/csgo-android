@@ -17,7 +17,7 @@
 #include "vgui_controls/ListPanel.h"
 #include "vgui_controls/QueryBox.h"
 
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
 
 #include <stdio.h>
