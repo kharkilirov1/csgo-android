@@ -19,7 +19,7 @@
 #include "globals.h"
 #include "physics_impact_damage.h"
 #include "te_effect_dispatch.h"
-#include "GameStats.h"
+#include "gamestats.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

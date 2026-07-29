@@ -67,7 +67,7 @@
 #endif
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "nav_mesh.h"
-#include "ai_responsesystem.h"
+#include "AI_ResponseSystem.h"
 #include "saverestore_stringtable.h"
 #include "util.h"
 #include "tier0/icommandline.h"
@@ -90,7 +90,7 @@
 #include "scenefilecache/ISceneFileCache.h"
 #include "tier2/tier2.h"
 #include "particles/particles.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "ixboxsystem.h"
 #include "matchmaking/imatchframework.h"
 #include "querycache.h"

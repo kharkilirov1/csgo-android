@@ -7,7 +7,7 @@
 #include "cbase.h"
 
 #include "igamesystem.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "tier1/utlstring.h"
 #include "filesystem.h"
 #include "tier1/utlbuffer.h"

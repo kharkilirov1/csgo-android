@@ -4,7 +4,7 @@
 
 #include "tier1/utlvector.h"
 #include "tier1/utlhashtable.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "mathlib/femodel.h"
 #include "tier1/utlbufferstrider.h"
 

@@ -9,7 +9,7 @@
 #include "gameinterface.h"
 #include "mapentities.h"
 #include "cs_gameinterface.h"
-#include "ai_responsesystem.h"
+#include "AI_ResponseSystem.h"
 #include "iachievementmgr.h"
 #include "fmtstr.h"
 #include "gametypes.h"

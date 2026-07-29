@@ -12,7 +12,7 @@
 #endif
 
 #include "cs_blackmarket.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "cs_gamestats_shared.h"
 #include "GameEventListener.h"
 #include "weapon_csbase.h"

@@ -56,7 +56,7 @@
 
 	#include "cs_player.h"
 	#include "te_effect_dispatch.h"
-	#include "keyvalues.h"
+	#include "KeyValues.h"
 	#include "cs_ammodef.h"
 	#include "cvisibilitymonitor.h"
 

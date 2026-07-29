@@ -11,7 +11,7 @@
 #else
 #include <stdio.h>
 #include "dbg.h"
-#include "SteamCommon.h"
+#include "steamcommon.h"
 #include "steam/steamclientpublic.h"
 #include "tier1/strtools.h"
 #endif

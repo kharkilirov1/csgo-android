@@ -14,7 +14,7 @@
 
 #include "tier1/utlvector.h"
 #include "tier1/utlsymbol.h"
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/Dar.h>
 #include <vgui/Cursor.h>
 #include <vgui/IScheme.h>

@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <utlvector.h>
-#include <vstdlib/ikeyvaluessystem.h>
+#include <vstdlib/IKeyValuesSystem.h>
 
 #include <vgui/IBorder.h>
 #include <vgui/IInput.h>
@@ -19,7 +19,7 @@
 #include <vgui/ISystem.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IVGui.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/MouseCode.h>
 
 #include <vgui_controls/Panel.h>

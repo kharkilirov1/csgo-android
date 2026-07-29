@@ -13,7 +13,7 @@
 #include <vgui_controls/ImageList.h>
 #include <vgui_controls/MessageBox.h>
 #include <vgui/Cursor.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/IInput.h>
 #include <vgui/ISurface.h>
 #include <vgui/ISystem.h>

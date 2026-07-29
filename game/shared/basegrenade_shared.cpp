@@ -15,7 +15,7 @@
 
 #include "soundent.h"
 #include "entitylist.h"
-#include "GameStats.h"
+#include "gamestats.h"
 
 #endif
 

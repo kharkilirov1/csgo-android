@@ -22,7 +22,7 @@
 #include "utlrbtree.h"
 #include "tier1/strtools.h"
 #include "physics_impact_damage.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
 #include "scriptevent.h"
 #include "entityblocker.h"
@@ -39,7 +39,7 @@
 #include "datacache/imdlcache.h"
 #include "doors.h"
 #include "physics_collisionevent.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "vehicle_base.h"
 #include "tier0/icommandline.h"
 #include "pushentity.h"
@@ -55,7 +55,7 @@
 	#include "portal_grabcontroller_shared.h"
 #endif // PORTAL2
 
-#include "vstdlib/ikeyvaluessystem.h"
+#include "vstdlib/IKeyValuesSystem.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

@@ -5,7 +5,7 @@
 // $NoKeywords: $
 //=============================================================================//
 
-#include <color.h>
+#include <Color.h>
 #include <vgui/IPanel.h>
 #include <vgui/ISurface.h>
 

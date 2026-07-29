@@ -30,7 +30,7 @@
 	#include "waterbullet.h"
 	#include "func_break.h"
 
-	#include "GameStats.h"
+	#include "gamestats.h"
 
 #endif
 

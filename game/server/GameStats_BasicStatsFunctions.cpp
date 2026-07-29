@@ -6,7 +6,7 @@
 
 #include "cbase.h"
 
-#include "GameStats.h"
+#include "gamestats.h"
 
 // NOTE: This has to be the last file included!
 #include "tier0/memdbgon.h"

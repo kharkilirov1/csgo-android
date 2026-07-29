@@ -7,7 +7,7 @@
 #include <vgui_controls/tgaimagepanel.h>
 #include "bitmap/tgaloader.h"
 #include "vgui/ISurface.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "tier1/fmtstr.h"
 
 // memdbgon must be the last include file in a .cpp file!!!

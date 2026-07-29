@@ -12,7 +12,7 @@
 #include "vgui/IInput.h"
 #include "vgui/IVGui.h"
 #include "vgui/ILocalize.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "vgui/Cursor.h"
 #include "tier1/utldict.h"
 

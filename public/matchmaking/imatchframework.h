@@ -17,10 +17,10 @@
 class IMatchFramework;
 class IMatchSession;
 
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 
 #include "tier1/interface.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 
 #if !defined( _X360 )
 #include "xbox/xboxstubs.h"

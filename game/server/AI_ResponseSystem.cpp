@@ -7,10 +7,10 @@
 
 #include "cbase.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
-#include "ai_responsesystem.h"
+#include "AI_ResponseSystem.h"
 #include "igamesystem.h"
-#include "ai_criteria.h"
-#include <keyvalues.h>
+#include "AI_Criteria.h"
+#include <KeyValues.h>
 #include "filesystem.h"
 #include "utldict.h"
 #include "ai_speech.h"

@@ -9,7 +9,7 @@
 #define PROTECTED_THINGS_DISABLE
 
 #include <vgui/MouseCode.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/IBorder.h>
 #include <vgui/IInput.h>
 #include <vgui/ISystem.h>

@@ -13,7 +13,7 @@
 
 #include "shareddefs.h"
 #include "GameEventListener.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "gamestringpool.h"
 
 #ifdef CLIENT_DLL

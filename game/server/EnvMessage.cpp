@@ -8,10 +8,10 @@
 #include "cbase.h"
 #include "EnvMessage.h"
 #include "engine/IEngineSound.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
-#include "color.h"
-#include "GameStats.h"
+#include "Color.h"
+#include "gamestats.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

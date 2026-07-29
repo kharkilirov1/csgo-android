@@ -6,7 +6,7 @@
 //=============================================================================//
 
 #include "vgui_controls/pch_vgui_controls.h"
-#include <vgui_controls/keyrepeat.h>
+#include <vgui_controls/KeyRepeat.h>
 
 // memdbgon must be the last include file in a .cpp file
 #include "tier0/memdbgon.h"

@@ -47,7 +47,7 @@
 #include "ai_tacticalservices.h"
 #include "ai_behavior.h"
 #include "ai_dynamiclink.h"
-#include "ai_criteria.h"
+#include "AI_Criteria.h"
 #include "basegrenade_shared.h"
 #include "ammodef.h"
 #include "player.h"
@@ -108,7 +108,7 @@ extern ConVar sk_healthkit;
 #include "ai_waypoint.h"
 
 #include "utlbuffer.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "physics_prop_statue.h"
 
 // memdbgon must be the last include file in a .cpp file!!!

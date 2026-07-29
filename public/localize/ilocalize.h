@@ -12,8 +12,8 @@
 #pragma once
 #endif
 
-#include "appframework/iappsystem.h"
-#include <tier1/keyvalues.h>
+#include "appframework/IAppSystem.h"
+#include <tier1/KeyValues.h>
 
 // unicode character type
 // for more unicode manipulation functions #include <wchar.h>

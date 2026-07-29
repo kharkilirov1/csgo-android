@@ -12,7 +12,7 @@
 #endif
 
 #if !defined( INCLUDED_STEAM_STEAMUSERIDTYPES_H )
-	#include "SteamCommon.h"
+	#include "steamcommon.h"
 #endif
 
 #define IDTYPE_WON		0

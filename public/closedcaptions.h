@@ -12,7 +12,7 @@
 
 #include "captioncompiler.h"
 #include "tier1/utlsymbol.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 
 FORWARD_DECLARE_HANDLE( memhandle_t );
 
