@@ -1,0 +1,58 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	root = 'src/google/protobuf/'
+	sources = [
+		'stubs/atomicops_internals_x86_gcc.cc',
+		'stubs/atomicops_internals_x86_msvc.cc',
+		'stubs/common.cc',
+		'stubs/once.cc',
+		'stubs/stringprintf.cc',
+		'extension_set.cc',
+		'generated_message_util.cc',
+		'message_lite.cc',
+		'repeated_field.cc',
+		'wire_format_lite.cc',
+		'io/coded_stream.cc',
+		'io/zero_copy_stream.cc',
+		'io/zero_copy_stream_impl_lite.cc',
+		'stubs/strutil.cc',
+		'stubs/substitute.cc',
+		'stubs/structurally_valid.cc',
+		'descriptor.cc',
+		'descriptor.pb.cc',
+		'descriptor_database.cc',
+		'dynamic_message.cc',
+		'extension_set_heavy.cc',
+		'generated_message_reflection.cc',
+		'message.cc',
+		'reflection_ops.cc',
+		'service.cc',
+		'text_format.cc',
+		'unknown_field_set.cc',
+		'wire_format.cc',
+		'io/gzip_stream.cc',
+		'io/printer.cc',
+		'io/tokenizer.cc',
+		'io/zero_copy_stream_impl.cc',
+		'compiler/importer.cc',
+		'compiler/parser.cc',
+	]
+	bld.stlib(
+		source=[root + source for source in sources],
+		target='protobuf',
+		name='protobuf',
+		features='c cxx',
+		includes=['src', 'vsprojects'],
+	defines=['_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS=1'] + ([] if bld.env.DEST_OS == 'win32' else ['HAVE_PTHREAD=1']),
+		use=['tier0'],
+		subsystem=bld.env.MSVC_SUBSYSTEM,
+		idx=bld.get_taskgen_count()
+	)

@@ -1,0 +1,537 @@
+{
+  "source_root": "C:\\Users\\Kharki\\Desktop\\source-engine",
+  "donor_root": "C:\\Users\\Kharki\\Downloads\\csgo-2018-source-main\\csgo-2018-source-main",
+  "file_inventory": {
+    "source": 21700,
+    "donor": 13847,
+    "common_paths": 5907,
+    "donor_only_paths": 7940,
+    "source_only_paths": 15793
+  },
+  "csgo_gameplay_code_files": {
+    "client": 300,
+    "server": 110,
+    "shared": 120
+  },
+  "vpc": {
+    "literal_file_references": 5759,
+    "dynamic_file_references": 1499,
+    "missing_literal_references_in_donor": 1068,
+    "missing_literal_reference_examples": [
+      "binksdk/bink.h",
+      "common/console_logging.h",
+      "common/miles/mss.h",
+      "common/modo/302/common/cwrap.cpp",
+      "common/modo/302/common/lxu_format.cpp",
+      "common/modo/302/common/lxu_parser.cpp",
+      "common/modo/302/common/lxu_scene.cpp",
+      "common/modo/302/common/lxu_uservalue.cpp",
+      "common/modo/302/lx_action.hpp",
+      "common/modo/302/lx_command.hpp",
+      "common/modo/302/lx_envelope.hpp",
+      "common/modo/302/lx_image.hpp",
+      "common/modo/302/lx_io.hpp",
+      "common/modo/302/lx_item.hpp",
+      "common/modo/302/lx_log.hpp",
+      "common/modo/302/lx_mesh.hpp",
+      "common/modo/302/lx_message.hpp",
+      "common/modo/302/lx_server.hpp",
+      "common/modo/302/lx_util.hpp",
+      "common/modo/302/lx_value.hpp",
+      "common/modo/302/lx_visitor.hpp",
+      "common/modo/302/lx_wrap.hpp",
+      "common/modo/302/lxaction.h",
+      "common/modo/302/lxcom.h",
+      "common/modo/302/lxcommand.h",
+      "common/modo/302/lxenvelope.h",
+      "common/modo/302/lxidef.h",
+      "common/modo/302/lximage.h",
+      "common/modo/302/lxio.h",
+      "common/modo/302/lxitem.h",
+      "common/modo/302/lxitem1.h",
+      "common/modo/302/lxlayer.h",
+      "common/modo/302/lxlog.h",
+      "common/modo/302/lxmesh.h",
+      "common/modo/302/lxmeshold.h",
+      "common/modo/302/lxmessage.h",
+      "common/modo/302/lxresult.h",
+      "common/modo/302/lxsel.h",
+      "common/modo/302/lxserver.h",
+      "common/modo/302/lxshade.h",
+      "common/modo/302/lxu_format.hpp",
+      "common/modo/302/lxu_parser.hpp",
+      "common/modo/302/lxu_scene.hpp",
+      "common/modo/302/lxu_uservalue.hpp",
+      "common/modo/302/lxvalue.h",
+      "common/modo/302/lxvector.h",
+      "common/modo/302/lxvmath.h",
+      "common/modo/302/lxw_action.hpp",
+      "common/modo/302/lxw_command.hpp",
+      "common/modo/302/lxw_envelope.hpp",
+      "common/modo/302/lxw_image.hpp",
+      "common/modo/302/lxw_io.hpp",
+      "common/modo/302/lxw_item.hpp",
+      "common/modo/302/lxw_layer.hpp",
+      "common/modo/302/lxw_log.hpp",
+      "common/modo/302/lxw_mesh.hpp",
+      "common/modo/302/lxw_message.hpp",
+      "common/modo/302/lxw_server.hpp",
+      "common/modo/302/lxw_value.hpp",
+      "common/modo/401/common/cwrap.cpp",
+      "common/modo/401/common/lxu_format.cpp",
+      "common/modo/401/common/lxu_log.cpp",
+      "common/modo/401/common/lxu_parser.cpp",
+      "common/modo/401/common/lxu_prefvalue.cpp",
+      "common/modo/401/common/lxu_scene.cpp",
+      "common/modo/401/common/lxu_uservalue.cpp",
+      "common/modo/401/lx_action.hpp",
+      "common/modo/401/lx_command.hpp",
+      "common/modo/401/lx_envelope.hpp",
+      "common/modo/401/lx_image.hpp",
+      "common/modo/401/lx_io.hpp",
+      "common/modo/401/lx_item.hpp",
+      "common/modo/401/lx_log.hpp",
+      "common/modo/401/lx_mesh.hpp",
+      "common/modo/401/lx_message.hpp",
+      "common/modo/401/lx_movie.hpp",
+      "common/modo/401/lx_scripts1.hpp",
+      "common/modo/401/lx_server.hpp",
+      "common/modo/401/lx_trisurf.hpp",
+      "common/modo/401/lx_util.hpp",
+      "common/modo/401/lx_value.hpp",
+      "common/modo/401/lx_visitor.hpp",
+      "common/modo/401/lx_wrap.hpp",
+      "common/modo/401/lxaction.h",
+      "common/modo/401/lxcom.h",
+      "common/modo/401/lxcommand.h",
+      "common/modo/401/lxenvelope.h",
+      "common/modo/401/lxidef.h",
+      "common/modo/401/lximage.h",
+      "common/modo/401/lxio.h",
+      "common/modo/401/lxitem.h",
+      "common/modo/401/lxitem1.h",
+      "common/modo/401/lxlayer.h",
+      "common/modo/401/lxlog.h",
+      "common/modo/401/lxmesh.h",
+      "common/modo/401/lxmeshold.h",
+      "common/modo/401/lxmessage.h",
+      "common/modo/401/lxresult.h",
+      "common/modo/401/lxscripts.h",
+      "common/modo/401/lxsel.h"
+    ]
+  },
+  "gameplay_includes": {
+    "unique": 782,
+    "missing_in_donor": 68,
+    "missing_in_portable_source": 244,
+    "missing_in_portable_source_top": [
+      {
+        "include": "scaleformui/scaleformui.h",
+        "uses": 50
+      },
+      {
+        "include": "matchmaking/imatchframework.h",
+        "uses": 29
+      },
+      {
+        "include": "gametypes.h",
+        "uses": 22
+      },
+      {
+        "include": "sfhudflashinterface.h",
+        "uses": 21
+      },
+      {
+        "include": "sfhudfreezepanel.h",
+        "uses": 14
+      },
+      {
+        "include": "messagebox_scaleform.h",
+        "uses": 13
+      },
+      {
+        "include": "../gameui/cstrike15/cstrike15basepanel.h",
+        "uses": 11
+      },
+      {
+        "include": "hltvreplaysystem.h",
+        "uses": 10
+      },
+      {
+        "include": "platforminputdevice.h",
+        "uses": 10
+      },
+      {
+        "include": "cs_entity_spotting.h",
+        "uses": 7
+      },
+      {
+        "include": "cstrike15_item_inventory.h",
+        "uses": 7
+      },
+      {
+        "include": "effects/inferno.h",
+        "uses": 7
+      },
+      {
+        "include": "hud/sfweaponselection.h",
+        "uses": 7
+      },
+      {
+        "include": "cs_player_rank_mgr.h",
+        "uses": 6
+      },
+      {
+        "include": "cs_player_rank_shared.h",
+        "uses": 6
+      },
+      {
+        "include": "cstrike15_gcmessages.pb.h",
+        "uses": 6
+      },
+      {
+        "include": "gametypes/igametypes.h",
+        "uses": 6
+      },
+      {
+        "include": "materialsystem/icustommaterialmanager.h",
+        "uses": 6
+      },
+      {
+        "include": "ps3/ps3_win32stubs.h",
+        "uses": 6
+      },
+      {
+        "include": "uigamedata.h",
+        "uses": 6
+      },
+      {
+        "include": "../engine/filesystem_engine.h",
+        "uses": 5
+      },
+      {
+        "include": "cvisibilitymonitor.h",
+        "uses": 5
+      },
+      {
+        "include": "econ_gcmessages.h",
+        "uses": 5
+      },
+      {
+        "include": "itempickup_scaleform.h",
+        "uses": 5
+      },
+      {
+        "include": "souirender_pch.h",
+        "uses": 5
+      },
+      {
+        "include": "souirender_pchend.h",
+        "uses": 5
+      },
+      {
+        "include": "cs_hud_weaponselection.h",
+        "uses": 4
+      },
+      {
+        "include": "csgo_playeranimstate.h",
+        "uses": 4
+      },
+      {
+        "include": "cstrike15_gcconstants.h",
+        "uses": 4
+      },
+      {
+        "include": "cstrike15_item_system.h",
+        "uses": 4
+      },
+      {
+        "include": "econ_item_inventory.h",
+        "uses": 4
+      },
+      {
+        "include": "engine/inetsupport.h",
+        "uses": 4
+      },
+      {
+        "include": "matchmaking/cstrike15/imatchext_cstrike15.h",
+        "uses": 4
+      },
+      {
+        "include": "matchmaking/mm_helpers.h",
+        "uses": 4
+      },
+      {
+        "include": "materialsystem/base_visuals_data_processor.h",
+        "uses": 4
+      },
+      {
+        "include": "options_scaleform.h",
+        "uses": 4
+      },
+      {
+        "include": "sfhudwinpanel.h",
+        "uses": 4
+      },
+      {
+        "include": "teammenu_scaleform.h",
+        "uses": 4
+      },
+      {
+        "include": "../vgui/counterstrikeviewport.h",
+        "uses": 3
+      },
+      {
+        "include": "bannedwords.h",
+        "uses": 3
+      },
+      {
+        "include": "createmainmenuscreen_scaleform.h",
+        "uses": 3
+      },
+      {
+        "include": "cs_custom_clothing_visualsdata_processor.h",
+        "uses": 3
+      },
+      {
+        "include": "cs_custom_weapon_visualsdata_processor.h",
+        "uses": 3
+      },
+      {
+        "include": "econ_entity_creation.h",
+        "uses": 3
+      },
+      {
+        "include": "econ_game_account_client.h",
+        "uses": 3
+      },
+      {
+        "include": "econ_item_view.h",
+        "uses": 3
+      },
+      {
+        "include": "html_control_scaleform.h",
+        "uses": 3
+      },
+      {
+        "include": "hud/sfhud_teamcounter.h",
+        "uses": 3
+      },
+      {
+        "include": "hud/sfhudreticle.h",
+        "uses": 3
+      },
+      {
+        "include": "loadingscreen_scaleform.h",
+        "uses": 3
+      },
+      {
+        "include": "overwatchresolution_scaleform.h",
+        "uses": 3
+      },
+      {
+        "include": "playerdecals_signature.h",
+        "uses": 3
+      },
+      {
+        "include": "sensorgrenade_projectile.h",
+        "uses": 3
+      },
+      {
+        "include": "splitscreensignon.h",
+        "uses": 3
+      },
+      {
+        "include": "vgui_controls/footerpanel.h",
+        "uses": 3
+      },
+      {
+        "include": "vgui_controls/tgaimagepanel.h",
+        "uses": 3
+      },
+      {
+        "include": "../../../shared/cstrike15/cs_gamerules.h",
+        "uses": 2
+      },
+      {
+        "include": "../common/xlast_csgo/csgo.spa.h",
+        "uses": 2
+      },
+      {
+        "include": "cell/sysmodule.h",
+        "uses": 2
+      },
+      {
+        "include": "chooseclass_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "createlegalanim_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "createstartscreen_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_custom_epidermis_visualsdata_processor.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_custom_material_swap.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_gameplay_hints.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_player_shared.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_voteissues.h",
+        "uses": 2
+      },
+      {
+        "include": "cs_workshop_manager.h",
+        "uses": 2
+      },
+      {
+        "include": "cstrike15_item_constants.h",
+        "uses": 2
+      },
+      {
+        "include": "decoy_projectile.h",
+        "uses": 2
+      },
+      {
+        "include": "dedicated_server_ugc_manager.h",
+        "uses": 2
+      },
+      {
+        "include": "econ_item_constants.h",
+        "uses": 2
+      },
+      {
+        "include": "econ_item_system.h",
+        "uses": 2
+      },
+      {
+        "include": "econ_item_view_helpers.h",
+        "uses": 2
+      },
+      {
+        "include": "effects/chicken.h",
+        "uses": 2
+      },
+      {
+        "include": "entityutil.h",
+        "uses": 2
+      },
+      {
+        "include": "filesystem/ixboxinstaller.h",
+        "uses": 2
+      },
+      {
+        "include": "func_hostage_rescue.h",
+        "uses": 2
+      },
+      {
+        "include": "game_item_schema.h",
+        "uses": 2
+      },
+      {
+        "include": "gc_clientsystem.h",
+        "uses": 2
+      },
+      {
+        "include": "howtoplaydialog_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "html_base_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "hud/sfhudradar.h",
+        "uses": 2
+      },
+      {
+        "include": "item_healthshot.h",
+        "uses": 2
+      },
+      {
+        "include": "leaderboardsdialog_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "matchmaking/iplayermanager.h",
+        "uses": 2
+      },
+      {
+        "include": "matchmaking/iplayerrankingdata.h",
+        "uses": 2
+      },
+      {
+        "include": "materialsystem/icompositetexturegenerator.h",
+        "uses": 2
+      },
+      {
+        "include": "medalstatsdialog_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "molotov_projectile.h",
+        "uses": 2
+      },
+      {
+        "include": "motion_calibration_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "options_audio_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "options_video_scaleform.h",
+        "uses": 2
+      },
+      {
+        "include": "portal2uitest/basemodpanel.h",
+        "uses": 2
+      },
+      {
+        "include": "ps3/saverestore_ps3_api_ui.h",
+        "uses": 2
+      },
+      {
+        "include": "scaleform/hud/sfhudinfopanel.h",
+        "uses": 2
+      },
+      {
+        "include": "sfhud_teamcounter.h",
+        "uses": 2
+      },
+      {
+        "include": "sfhudcallvotepanel.h",
+        "uses": 2
+      },
+      {
+        "include": "sfhudinfopanel.h",
+        "uses": 2
+      },
+      {
+        "include": "sfhudradar.h",
+        "uses": 2
+      }
+    ]
+  },
+  "port_gates": [
+    "Import cstrike15 gameplay and its generated protobuf headers.",
+    "Port CSTRIKE15 engine interfaces before compiling gameplay DLLs.",
+    "Disable or replace Scaleform, Steam, GC, economy and matchmaking for the first offline build.",
+    "Add csgo VPC lists to the Waf client/server game registries.",
+    "Compile server first, then client, then run an Android ARM64 map-load smoke test."
+  ]
+}

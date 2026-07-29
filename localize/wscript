@@ -1,0 +1,38 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+PROJECT_NAME = 'localize'
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	source = [
+		'localize.cpp',
+		'../public/tier0/memoverride.cpp'
+	]
+
+	includes = [
+		'.',
+		'../public',
+		'../public/tier0',
+		'../public/tier1',
+		'../common'
+	]
+
+	libs = ['tier0', 'interfaces', 'tier1', 'tier2', 'vstdlib']
+
+	bld.shlib(
+		source   = source,
+		target   = PROJECT_NAME,
+		name     = PROJECT_NAME,
+		features = 'c cxx',
+		includes = includes,
+		use      = libs,
+		install_path = bld.env.LIBDIR,
+		subsystem = bld.env.MSVC_SUBSYSTEM,
+		idx      = bld.get_taskgen_count()
+	)

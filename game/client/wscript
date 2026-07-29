@@ -1,0 +1,188 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+from waflib import Utils
+import os
+import vpc_parser
+
+top = '.'
+PROJECT_NAME = 'client'
+
+def options(opt):
+	return
+
+games = {
+	'hl2': ['client_base.vpc', 'client_hl2.vpc'],
+	'hl2mp': ['client_base.vpc', 'client_hl2mp.vpc'],
+	'hl1': ['client_base.vpc', 'client_hl1.vpc'],
+	'episodic': ['client_base.vpc', 'client_episodic.vpc'],
+	'portal': ['client_base.vpc', 'client_portal.vpc'],
+	'hl1mp': ['client_base.vpc', 'client_hl1mp.vpc'],
+	'cstrike': ['client_base.vpc', 'client_cstrike.vpc'],
+	'csgo': ['client_base.vpc', 'client_econ_base.vpc', 'client_cstrike15.vpc'],
+	'dod': ['client_base.vpc', 'client_dod.vpc']
+}
+
+def configure(conf):
+	game = conf.options.GAMES
+	conf.env.GAMES = game
+
+	conf.env.append_unique('DEFINES', ['DISABLE_STEAM=1'])
+
+	if game not in games.keys():
+		conf.fatal("Couldn't find game: ", game)
+
+def build(bld):
+	game = vpc_parser.parse_vpcs( bld.env, games[bld.env.GAMES], '../..' )
+
+	includes = [
+		'.',
+		'game_controls',
+		'../../common',
+		'../../public',
+		'../../public/tier0',
+		'../../public/tier1',
+		'../../vgui2/include',
+		'../../vgui2/controls',
+		'../shared'
+	]
+
+	libs = [
+		'tier0',
+		'particles',
+		'dmxloader',
+		'vgui_controls',
+		'matsys_controls',
+		'tier1',
+		'tier2',
+		'tier3',
+		'mathlib',
+		'vstdlib',
+		'interfaces',
+		'bonesetup',
+		'protobuf',
+		'gcsdk',
+		'responserules_runtime',
+		'raytrace',
+		'videocfg',
+		'resourcefile',
+		'choreoobjects',
+		'steam_api',
+		'bitmap',
+		'vtf',
+		'RT',
+		'ZLIB'
+	]
+
+	install_path = bld.env.PREFIX
+	if bld.env.DEST_OS != 'android':
+		install_path += '/'+bld.env.GAMES+'/bin'
+
+	source = [ 'in_touch.cpp', 'touch.cpp' ] if bld.env.DEST_OS == 'android' else []
+	if bld.env.DEST_OS == 'win32':
+		libs += ['USER32', 'GDI32', 'JPEG', 'PNG']
+	elif bld.env.DEST_OS == 'android':
+		libs += ['jpeg_static']
+
+	source += game["sources"] + ['../../public/tier0/memoverride.cpp']
+	if bld.env.GAMES == 'csgo':
+		source += [
+			'../../common/steamid.cpp',
+			'../../utils/lzma/lzma.cpp',
+			'../../utils/lzma/C/LzmaEnc.c',
+			'../../utils/lzma/C/LzFind.c',
+			'generated_proto/base_gcmessages.pb.cc',
+			'generated_proto/cstrike15_gcmessages.pb.cc',
+			'generated_proto/cstrike15_usermessages.pb.cc',
+			'generated_proto/engine_gcmessages.pb.cc',
+			'generated_proto/netmessages.pb.cc',
+			'generated_proto/network_connection.pb.cc',
+			'generated_proto/steammessages.pb.cc',
+		]
+		if bld.env.DEST_OS == 'android':
+			# vpc_parser omits the embedded desktop GameUI folder for POSIX,
+			# but CS:GO links it into client rather than a separate gameui.so.
+			source += [
+				'cstrike15/gameui/backgroundmenubutton.cpp',
+				'cstrike15/gameui/basesavegamedialog.cpp',
+				'cstrike15/gameui/bitmapimagepanel.cpp',
+				'cstrike15/gameui/commandcheckbutton.cpp',
+				'cstrike15/gameui/contentcontroldialog.cpp',
+				'cstrike15/gameui/createmultiplayergamebotpage.cpp',
+				'cstrike15/gameui/createmultiplayergamedialog.cpp',
+				'cstrike15/gameui/createmultiplayergamegameplaypage.cpp',
+				'cstrike15/gameui/createmultiplayergameserverpage.cpp',
+				'cstrike15/gameui/customtabexplanationdialog.cpp',
+				'cstrike15/gameui/cvarnegatecheckbutton.cpp',
+				'cstrike15/gameui/cvarslider.cpp',
+				'cstrike15/gameui/cvartextentry.cpp',
+				'cstrike15/gameui/cvartogglecheckbutton.cpp',
+				'cstrike15/gameui/gameconsole.cpp',
+				'cstrike15/gameui/gameconsoledialog.cpp',
+				'cstrike15/gameui/gameui_interface.cpp',
+				'cstrike15/gameui/gameui_util.cpp',
+				'cstrike15/gameui/ironsight_editor.cpp',
+				'cstrike15/gameui/keytogglecheckbutton.cpp',
+				'cstrike15/gameui/labeledcommandcombobox.cpp',
+				'cstrike15/gameui/loadingtippanel.cpp',
+				'cstrike15/gameui/modinfo.cpp',
+				'cstrike15/gameui/mousemessageforwardingpanel.cpp',
+				'cstrike15/gameui/multiplayeradvanceddialog.cpp',
+				'cstrike15/gameui/optionsdialog.cpp',
+				'cstrike15/gameui/optionssubaudio.cpp',
+				'cstrike15/gameui/optionssubdifficulty.cpp',
+				'cstrike15/gameui/optionssubgame.cpp',
+				'cstrike15/gameui/optionssubkeyboard.cpp',
+				'cstrike15/gameui/optionssubmouse.cpp',
+				'cstrike15/gameui/optionssubmultiplayer.cpp',
+				'cstrike15/gameui/optionssubportal.cpp',
+				'cstrike15/gameui/optionssubvideo.cpp',
+				'cstrike15/gameui/optionssubvoice.cpp',
+				'cstrike15/gameui/panellistpanel.cpp',
+				'cstrike15/gameui/playerlistdialog.cpp',
+				'cstrike15/gameui/rungameengine.cpp',
+				'cstrike15/gameui/scriptobject.cpp',
+				'cstrike15/gameui/sys_utils.cpp',
+				'cstrike15/gameui/textentrybox.cpp',
+				'cstrike15/gameui/uiavatarimage.cpp',
+				'cstrike15/gameui/uigamedata_storage.cpp',
+				'cstrike15/gameui/uigamedata.cpp',
+				'cstrike15/gameui/urlbutton.cpp',
+				'cstrike15/gameui/vcontrolslistpanel.cpp',
+				'cstrike15/gameui/vguisystemmoduleloader.cpp',
+			]
+		if bld.env.DEST_OS == 'win32':
+			source += [
+				'../../utils/lzma/C/LzFindMt.c',
+				'../../utils/lzma/C/MtCoder.c',
+				'../../utils/lzma/C/Threads.c',
+			]
+	includes += game["includes"]
+	if bld.env.GAMES == 'csgo':
+		# The CS:GO branch uses the unified shared bone-merge implementation.
+		# Put shared ahead of the legacy SDK client header with the same name.
+		includes.remove('.')
+		includes.insert(0, '../shared')
+		includes.insert(1, '.')
+		includes += ['generated_proto', '../../thirdparty/protobuf-2.5.0/src']
+	defines = game["defines"]
+	if bld.env.GAMES == 'csgo':
+		defines += ['CSGO=1', 'CSTRIKE15=1', 'CSTRIKE_REL_BUILD=1']
+		if bld.env.DEST_OS == 'android':
+			defines += ['_7ZIP_ST=1']
+
+	defines.remove('PROTECTED_THINGS_ENABLE')
+
+	bld.shlib(
+		source   = source,
+		target   = PROJECT_NAME,
+		name     = PROJECT_NAME,
+		features = 'c cxx',
+		includes = includes,
+		defines  = defines,
+		use      = libs,
+		install_path = install_path,
+		subsystem = bld.env.MSVC_SUBSYSTEM,
+		idx      = bld.get_taskgen_count()
+	)
+

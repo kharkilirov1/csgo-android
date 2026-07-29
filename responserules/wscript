@@ -1,0 +1,28 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	bld.stlib(
+		source=[
+			'runtime/rrrlib.cpp',
+			'runtime/response_types.cpp',
+			'runtime/response_types_internal.cpp',
+			'runtime/response_system.cpp',
+			'runtime/rr_speechconcept.cpp',
+			'runtime/rr_response.cpp',
+			'runtime/criteriaset.cpp',
+		],
+		target='responserules_runtime',
+		name='responserules_runtime',
+		features='c cxx',
+		includes=['.', 'runtime', '../common', '../public', '../public/tier0', '../public/tier1'],
+		use=['tier0', 'tier1'],
+		subsystem=bld.env.MSVC_SUBSYSTEM,
+		idx=bld.get_taskgen_count()
+	)

@@ -1,0 +1,20 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	bld.stlib(
+		source='interfaces.cpp',
+		target='interfaces',
+		name='interfaces',
+		features='c cxx',
+		includes=['..', '../common', '../public'],
+		use=['tier0', 'tier1'],
+		subsystem=bld.env.MSVC_SUBSYSTEM,
+		idx=bld.get_taskgen_count()
+	)

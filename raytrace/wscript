@@ -1,0 +1,22 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+PROJECT_NAME = 'raytrace'
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	bld.stlib(
+		source = ['raytrace.cpp', 'trace2.cpp', 'trace3.cpp'],
+		target = PROJECT_NAME,
+		name = PROJECT_NAME,
+		features = 'c cxx',
+		includes = ['.', '../public', '../public/tier0', '../public/tier1', '../utils/common'],
+		use = ['tier0', 'tier1', 'mathlib'],
+		subsystem = bld.env.MSVC_SUBSYSTEM,
+		idx = bld.get_taskgen_count()
+	)
