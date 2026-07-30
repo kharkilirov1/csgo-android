@@ -9,10 +9,13 @@
 #     iconv from API 28 (__INTRODUCED_IN(28)). arm64 is 64-bit only, so a
 #     modern (API 28 / Android 9) floor is reasonable anyway.
 #
-# The server game DLL (libserver.so) builds and links cleanly. The client is
-# not built here yet: its Scaleform UI backend (proprietary Autodesk GFx) is
-# absent, so ScaleformUI() is unresolved at link time. Add the client target
-# once a Scaleform stub / VGUI replacement is in place.
+# Both game DLLs (libserver.so, libclient.so) build and link cleanly for
+# arm64-v8a. Scaleform is NOT a link blocker here: the accessor ScaleformUI()
+# is defined by the cstrike15/gameui sources that Android compiles into the
+# client. It remains a *runtime* gap - g_pScaleformUI is NULL until a real or
+# stub IScaleformUI backend is installed - so the flash HUD/menus will not
+# render until that is provided (the proprietary Autodesk GFx runtime is
+# absent and cannot target arm64).
 
 set -e
 
@@ -32,4 +35,4 @@ export ANDROID_NDK_HOME="$PWD/$NDK_DIR"
 export NDK_HOME="$PWD/$NDK_DIR"
 
 ./waf configure -T debug --android=aarch64,clang,28 --togles --build-games=csgo --disable-warns
-./waf build --targets=server
+./waf build --targets=server,client
