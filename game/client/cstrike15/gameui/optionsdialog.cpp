@@ -19,7 +19,7 @@
 #include "vgui/ISystem.h"
 #include "vgui/IVGui.h"
 
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "optionssubkeyboard.h"
 #include "optionssubmouse.h"
 #include "optionssubaudio.h"

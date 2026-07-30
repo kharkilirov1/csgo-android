@@ -14,7 +14,7 @@
 
 #include "engineinterface.h"
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/IScheme.h>
 #include "tier1/convar.h"
 #include <stdio.h>

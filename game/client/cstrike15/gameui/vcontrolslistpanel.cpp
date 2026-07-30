@@ -14,7 +14,7 @@
 #include <vgui/ISurface.h>
 #include <vgui/IVGui.h>
 #include <vgui/Cursor.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 
 
 // memdbgon must be the last include file in a .cpp file!!!

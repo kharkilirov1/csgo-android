@@ -12,7 +12,7 @@
 #endif
 
 #include "vgui_controls/consoledialog.h"
-#include <color.h>
+#include <Color.h>
 #include "utlvector.h"
 #include "engineinterface.h"
 #include "vgui_controls/Frame.h"

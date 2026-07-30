@@ -7,7 +7,7 @@
 
 #include "labeledcommandcombobox.h"
 #include "engineinterface.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/ILocalize.h>
 
 // memdbgon must be the last include file in a .cpp file!!!

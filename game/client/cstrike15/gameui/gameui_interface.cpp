@@ -55,7 +55,7 @@
 // vgui2 interface
 // note that GameUI project uses ..\vgui2\include, not ..\utils\vgui\include
 #include "vgui/Cursor.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "vgui/ILocalize.h"
 #include "vgui/IPanel.h"
 #include "vgui/IScheme.h"

@@ -13,7 +13,7 @@
 #include "engineinterface.h"
 #include "ivoicetweak.h"
 #include "cvartogglecheckbutton.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "tier1/convar.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
