@@ -235,6 +235,11 @@ public:
 	void DrawModelArray2( const StudioModelArrayInfo2_t &info, const StudioRenderContext_t &rc, int nCount, StudioArrayData_t *pArrayData, int nInstanceStride, int flags = STUDIORENDER_DRAW_ENTIRE_MODEL );
 	void DrawModelShadowArray( const StudioRenderContext_t &rc, int nCount, StudioArrayData_t *pShadowData, int nInstanceStride, int flags );
 
+	// Model surface-area/triangle stats pass (r_studiostats.cpp). Nothing calls
+	// these yet; they are the CS:GO stats entry points.
+	void ModelStats( const DrawModelInfo_t& info, const StudioRenderContext_t &rc, matrix3x4_t *pBoneToWorld, const FlexWeights_t &flex, int flags );
+	void R_GatherStats( studiomeshgroup_t *pGroup, CMeshBuilder &MeshBuilder, IMesh *pMesh, IMaterial *pMaterial );
+
 	// Static-prop related draw methods
 	void DrawModelStaticProp( const DrawModelInfo_t& info, const StudioRenderContext_t &rc, const matrix3x4_t &modelToWorld, int flags = STUDIORENDER_DRAW_ENTIRE_MODEL );
 	void DrawModelArrayStaticProp( const DrawModelInfo_t& info, const StudioRenderContext_t &rc, int nInstanceCount, const MeshInstanceData_t *pInstanceData, ColorMeshInfo_t **pColorMeshes );
