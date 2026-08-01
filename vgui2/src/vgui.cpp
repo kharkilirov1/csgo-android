@@ -12,7 +12,7 @@
 #endif
 
 #include "VGuiMatSurface/IMatSystemSurface.h"
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/Dar.h>
 #include <vgui/IInputInternal.h>
 #include <vgui/IPanel.h>
@@ -21,7 +21,7 @@
 #include <vgui/IVGui.h>
 #include <vgui/IClientPanel.h>
 #include <vgui/IScheme.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>

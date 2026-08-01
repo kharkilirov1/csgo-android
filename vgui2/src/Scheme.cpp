@@ -10,14 +10,14 @@
 #include <math.h>
 
 #include "vgui/IScheme.h"
-#include "vgui_surfacelib/fontmanager.h"
-#include "vgui/vgui.h"
+#include "vgui_surfacelib/FontManager.h"
+#include "vgui/VGUI.h"
 
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "vgui/ISurface.h"
 #include "vgui/IPanel.h"
 #include "vgui/ISystem.h"
-#include "vstdlib/ikeyvaluessystem.h"
+#include "vstdlib/IKeyValuesSystem.h"
 
 #include "vgui/ILocalize.h"
 #include "utlvector.h"
@@ -30,7 +30,7 @@
 #include "filesystem.h"
 #include "generichash.h"
 #include "vprof.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>

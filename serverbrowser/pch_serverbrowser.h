@@ -68,7 +68,7 @@
 #include "SpectateGames.h"
 #include "CustomGames.h"
 #include "ServerBrowserDialog.h"
-#include "quicklistpanel.h"
+#include "QuickListPanel.h"
 #include "vgui_controls/PanelListPanel.h"
 
 #pragma warning( disable: 4355 )  //  warning C4355: 'this' : used in base member initializer list

@@ -14,9 +14,9 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/ISystem.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/IInputInternal.h>
 #include <vgui/ISurface.h>
 #include "tier1/fmtstr.h"

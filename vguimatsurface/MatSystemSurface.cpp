@@ -30,8 +30,8 @@ ILauncherMgr *g_pLauncherMgr = NULL;
 #include "tier0/icommandline.h"
 #include "tier0/dbg.h"
 #include "filesystem.h"
-#include <vgui/vgui.h>
-#include <color.h>
+#include <vgui/VGUI.h>
+#include <Color.h>
 #include "shaderapi/ishaderapi.h"
 #include "utlvector.h"
 #include "Clip2D.h"
@@ -44,7 +44,7 @@ ILauncherMgr *g_pLauncherMgr = NULL;
 #include "Input.h"
 #include <vgui/IHTML.h>
 #include <vgui/IVGui.h>
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "vgui_surfacelib/fonttexturecache.h"
 #include "MatSystemSurface.h"
 #include "inputsystem/iinputsystem.h"

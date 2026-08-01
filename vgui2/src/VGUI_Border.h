@@ -12,10 +12,10 @@
 #pragma once
 #endif
 
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/IBorder.h>
 #include <vgui/IScheme.h>
-#include <color.h>
+#include <Color.h>
 
 class KeyValues;
 

@@ -15,7 +15,7 @@
 #include "tier1/utldict.h"
 #include "soundflags.h"
 #include "tier2/interval.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "tier1/mempool.h"
 #include "tier2/tier2.h"
 
