@@ -163,6 +163,13 @@ private:
 	};
 	static CUtlRBTree< font_name_entry > m_FriendlyNameCache;
 	static bool ms_bSetFriendlyNameCacheLessFunc;
+
+#ifdef ANDROID
+	// Android has no fontconfig, so the font list is built by scanning the
+	// font directories and the cache doubles as the name -> file resolver.
+	static void AddFontFileToCache( const char *pchFile, const char *pchFriendlyName );
+	static const char *FindFontFileByName( const char *pchFriendlyName );
+#endif
 };
 
 #endif // OSXFONT_H

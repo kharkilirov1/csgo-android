@@ -407,7 +407,11 @@ def check_deps(conf):
 				conf.check_cfg(package='libedit', uselib_store='EDIT', args=['--cflags', '--libs'])
 			else:
 				conf.check_pkg('freetype2', 'FT2', FT2_CHECK)
-				conf.check_pkg('fontconfig', 'FC', FC_CHECK)
+				# Android has no fontconfig; CLinuxFont enumerates the font
+				# directories directly there. Requiring it would only find the
+				# host's copy, which can't link into the target anyway.
+				if conf.env.DEST_OS != 'android':
+					conf.check_pkg('fontconfig', 'FC', FC_CHECK)
 				if conf.env.DEST_OS == "darwin":
 					conf.env.FRAMEWORK_OPENAL = "OpenAL"
 				else:

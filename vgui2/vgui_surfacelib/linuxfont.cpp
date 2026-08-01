@@ -16,7 +16,12 @@
 #include <tier0/dbg.h>
 #include <vgui/ISurface.h>
 #include <utlbuffer.h>
+#ifdef ANDROID
+// Android has no fontconfig; fonts are enumerated straight off disk below.
+#include <dirent.h>
+#else
 #include <fontconfig/fontconfig.h>
+#endif
 #include "materialsystem/imaterialsystem.h"
 
 #include "vgui_surfacelib/FontManager.h"
@@ -101,12 +106,142 @@ CLinuxFont::~CLinuxFont()
 //-----------------------------------------------------------------------------
 // Purpose: build a map of friendly (char *) name to crazy ATSU bytestream, so we can ask for "Tahoma" and actually load it
 //-----------------------------------------------------------------------------
-void CLinuxFont::CreateFontList()
+#ifdef ANDROID
+
+//-----------------------------------------------------------------------------
+// Adds one friendly-name -> file mapping to the cache. Both strings are copied.
+//-----------------------------------------------------------------------------
+void CLinuxFont::AddFontFileToCache( const char *pchFile, const char *pchFriendlyName )
 {
-	if ( m_FriendlyNameCache.Count() > 0 ) 
+	if ( !pchFile || !pchFriendlyName || !pchFriendlyName[0] )
 		return;
 
-	if(!FcInit()) 
+	font_name_entry entry;
+	entry.m_pchFile = (char *)malloc( Q_strlen( pchFile ) + 1 );
+	entry.m_pchFriendlyName = (char *)malloc( Q_strlen( pchFriendlyName ) + 1 );
+	Q_memcpy( entry.m_pchFile, pchFile, Q_strlen( pchFile ) + 1 );
+	Q_memcpy( entry.m_pchFriendlyName, pchFriendlyName, Q_strlen( pchFriendlyName ) + 1 );
+	m_FriendlyNameCache.Insert( entry );
+}
+
+//-----------------------------------------------------------------------------
+// Looks a family name up in the cache. Returns NULL when it isn't there.
+//-----------------------------------------------------------------------------
+const char *CLinuxFont::FindFontFileByName( const char *pchFriendlyName )
+{
+	font_name_entry key;
+	key.m_pchFriendlyName = (char *)pchFriendlyName;
+
+	int idx = m_FriendlyNameCache.Find( key );
+	if ( idx == m_FriendlyNameCache.InvalidIndex() )
+		return NULL;
+
+	return m_FriendlyNameCache[ idx ].m_pchFile;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Android replacement for the fontconfig enumeration below - walk the
+//			known font directories and ask FreeType for each file's family name.
+//-----------------------------------------------------------------------------
+void CLinuxFont::CreateFontList()
+{
+	if ( m_FriendlyNameCache.Count() > 0 )
+		return;
+
+	// Game-supplied fonts win over the system ones, so scan them first: the
+	// RBTree keeps the first entry inserted for a given family name.
+	static const char * const s_pchFontDirs[] =
+	{
+		"platform/vgui/fonts",
+		"/system/fonts",
+		"/system/font",
+		"/data/fonts",
+	};
+
+	FT_Library library = FontManager().GetFontLibraryHandle();
+	char szPath[MAX_PATH];
+	const char *pchDefaultFile = NULL;
+
+	for ( int i = 0; i < ARRAYSIZE( s_pchFontDirs ); i++ )
+	{
+		DIR *pDir = opendir( s_pchFontDirs[i] );
+		if ( !pDir )
+			continue;
+
+		struct dirent *pEntry;
+		while ( ( pEntry = readdir( pDir ) ) != NULL )
+		{
+			const char *pchExt = Q_strrchr( pEntry->d_name, '.' );
+			if ( !pchExt )
+				continue;
+			if ( Q_stricmp( pchExt, ".ttf" ) && Q_stricmp( pchExt, ".otf" ) && Q_stricmp( pchExt, ".ttc" ) )
+				continue;
+
+			Q_snprintf( szPath, sizeof(szPath), "%s/%s", s_pchFontDirs[i], pEntry->d_name );
+
+			// FreeType is the authority on what the file actually calls itself.
+			FT_Face scanFace = NULL;
+			if ( FT_New_Face( library, szPath, 0, &scanFace ) != 0 )
+				continue;
+
+			if ( scanFace->family_name && scanFace->family_name[0] )
+			{
+				AddFontFileToCache( szPath, scanFace->family_name );
+
+				// Remember a sans-serif face to stand in for fonts we don't have.
+				if ( !pchDefaultFile &&
+					 ( !Q_stricmp( scanFace->family_name, "Roboto" ) ||
+					   !Q_stricmp( scanFace->family_name, "Droid Sans" ) ||
+					   !Q_stricmp( scanFace->family_name, "Noto Sans" ) ) )
+				{
+					pchDefaultFile = FindFontFileByName( scanFace->family_name );
+				}
+			}
+
+			FT_Done_Face( scanFace );
+		}
+		closedir( pDir );
+	}
+
+	// Nothing recognisable? Fall back to whatever we found first, so the UI
+	// still renders with *some* face rather than no text at all.
+	if ( !pchDefaultFile && m_FriendlyNameCache.Count() > 0 )
+	{
+		pchDefaultFile = m_FriendlyNameCache[ m_FriendlyNameCache.FirstInorder() ].m_pchFile;
+	}
+
+	if ( !pchDefaultFile )
+	{
+		Warning( "CLinuxFont: found no usable font files on this device\n" );
+		return;
+	}
+
+	// The UI asks for Windows font names that don't exist on Android. Point the
+	// common ones at the default face unless a real font of that name turned up.
+	static const char * const s_pchAliases[] =
+	{
+		"Tahoma", "Verdana", "Arial", "Helvetica", "Times New Roman",
+		"Courier New", "Lucida Console", "Lucidia Console", "Trebuchet MS",
+		"MS Sans Serif", "Segoe UI",
+	};
+
+	for ( int i = 0; i < ARRAYSIZE( s_pchAliases ); i++ )
+	{
+		if ( !FindFontFileByName( s_pchAliases[i] ) )
+		{
+			AddFontFileToCache( pchDefaultFile, s_pchAliases[i] );
+		}
+	}
+}
+
+#else // !ANDROID
+
+void CLinuxFont::CreateFontList()
+{
+	if ( m_FriendlyNameCache.Count() > 0 )
+		return;
+
+	if(!FcInit())
 		return;
     FcConfig *config;
     FcPattern *pat;
@@ -220,6 +355,8 @@ static FcPattern* FontMatch(const char* type, FcType vtype, const void* value,
     return match;
 }
 
+#endif // !ANDROID
+
 bool CLinuxFont::CreateFromMemory(const char *windowsFontName, void *data, int size, int tall, int weight, int blur, int scanlines, int flags)
 {
 	// setup font properties
@@ -272,6 +409,45 @@ bool CLinuxFont::Create(const char *windowsFontName, int tall, int weight, int b
 	CreateFontList();
 
 	const char *pchFontName = windowsFontName;
+
+#ifdef ANDROID
+	// CreateFontList() has already mapped every font on the device (and the
+	// usual Windows names) onto a file, so resolve straight out of that cache.
+	const char *pchFile = FindFontFileByName( pchFontName );
+	if ( !pchFile )
+	{
+		// Unknown family - fall back to whatever we registered for Tahoma,
+		// which CreateFontList() aliases to the device's default sans face.
+		pchFile = FindFontFileByName( "Tahoma" );
+	}
+
+	if ( !pchFile )
+	{
+		Warning( "Unable to find a font file for %s\n", windowsFontName );
+		m_szName = "";
+		return false;
+	}
+
+	FT_Error error = FT_New_Face( FontManager().GetFontLibraryHandle(), pchFile, 0, &face );
+	if ( error )
+	{
+		Warning( "Unable to load font %s from %s\n", windowsFontName, pchFile );
+		m_szName = "";
+		return false;
+	}
+
+	if ( face->charmap == nullptr )
+	{
+		if ( FT_Select_Charmap( face, FT_ENCODING_APPLE_ROMAN ) )
+		{
+			FT_Done_Face( face );
+			face = NULL;
+
+			Msg( "Font %s has no valid charmap\n", windowsFontName );
+			return false;
+		}
+	}
+#else
 	if ( !Q_stricmp( pchFontName, "Tahoma" ) )
 		pchFontName = "Bitstream Vera Sans";
     const int italic = flags & FONTFLAG_ITALIC ? FC_SLANT_ITALIC : FC_SLANT_ROMAN;
@@ -325,6 +501,7 @@ bool CLinuxFont::Create(const char *windowsFontName, int tall, int weight, int b
 			}
 		}
 	}
+#endif // ANDROID
 
 	InitMetrics();
 	return true;
