@@ -33,9 +33,9 @@
 #include "tier1/interface.h"
 #include "tier0/dbg.h"
 #include "iregistry.h"
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 #include "appframework/AppFramework.h"
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/ISurface.h>
 #include "tier0/platform.h"
 #include "tier0/memalloc.h"

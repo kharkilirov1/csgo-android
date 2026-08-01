@@ -37,7 +37,7 @@ typedef int SOCKET;
 #include "tier0/vprof.h"
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/imaterialsystemhardwareconfig.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "shaderapidx8.h"
 #include "materialsystem/IShader.h"
 #include "materialsystem/ishadersystem.h"
@@ -61,7 +61,7 @@ typedef int SOCKET;
 #include "tier0/icommandline.h"
 #include "tier1/utlintrusivelist.h"
 
-#include "color.h"
+#include "Color.h"
 #include "tier0/dbg.h"
 
 #if defined( _X360 )
