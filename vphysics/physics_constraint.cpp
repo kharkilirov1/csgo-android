@@ -617,8 +617,10 @@ static bool ConvertRagdollToHinge( constraint_limitedhingeparams_t *pHingeOut, c
 	// many ragdoll constraints don't set this and the ragdoll solver ignores it
 	// force it to the default
 	pHingeOut->constraint.strength = 1.0f;
-	MatrixGetColumn( constraintToWorld, 3, &pHingeOut->worldPosition );
-	MatrixGetColumn( constraintToWorld, dofIndex, &pHingeOut->worldAxisDirection );
+	// matrix3x4_t overload takes the output Vector by reference (the pointer
+	// form belongs to the VMatrix overload).
+	MatrixGetColumn( constraintToWorld, 3, pHingeOut->worldPosition );
+	MatrixGetColumn( constraintToWorld, dofIndex, pHingeOut->worldAxisDirection );
 	pHingeOut->referencePerpAxisDirection.Init();
 	pHingeOut->referencePerpAxisDirection[(dofIndex+1)%3] = 1;
 

@@ -25,6 +25,9 @@
 #include "ivp_listener_object.hxx"
 
 // memdbgon must be the last include file in a .cpp file!!!
+// IVP/STL headers above undefine Valve's min/max macros; restore them.
+#include <tier0/valve_minmax_on.h>
+
 #include "tier0/memdbgon.h"
 
 #define THROTTLE_OPPOSING_FORCE_EPSILON		5.0f

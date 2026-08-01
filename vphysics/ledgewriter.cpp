@@ -16,6 +16,9 @@
 #include "utlbuffer.h"
 #include "ledgewriter.h"
 
+// The IVP headers above pull in STL, which undefines Valve's min/max macros.
+#include <tier0/valve_minmax_on.h>
+
 // gets the max vertex index referenced by a compact ledge
 static int MaxLedgeVertIndex( const IVP_Compact_Ledge *pLedge )
 {

@@ -22,6 +22,9 @@
 #include "utlbuffer.h"
 #include "ledgewriter.h"
 #include "tier1/mempool.h"
+// IVP/STL headers above undefine Valve's min/max macros; restore them.
+#include <tier0/valve_minmax_on.h>
+
 #include "tier0/memdbgon.h"
 
 class CPhysCollideVirtualMesh;

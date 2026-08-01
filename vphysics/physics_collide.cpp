@@ -1056,40 +1056,10 @@ static void LedgeInsidePoint( IVP_Compact_Ledge *pLedge, Vector& out )
 }
 
 
-//-----------------------------------------------------------------------------
-// Purpose: Calculate the volume of a tetrahedron with these vertices
-// Input  : p0 - points of tetrahedron
-//			p1 - 
-//			p2 - 
-//			p3 - 
-// Output : float (volume in units^3)
-//-----------------------------------------------------------------------------
-static float TetrahedronVolume( const Vector &p0, const Vector &p1, const Vector &p2, const Vector &p3 )
-{
-	Vector a, b, c, cross;
-	float volume = 1.0f / 6.0f;
-
-	a = p1 - p0;
-	b = p2 - p0;
-	c = p3 - p0;
-	cross = CrossProduct( b, c );
-
-	volume *= DotProduct( a, cross );
-	if ( volume < 0 )
-		return -volume;
-	return volume;
-}
-
-
-static float TriangleArea( const Vector &p0, const Vector &p1, const Vector &p2 )
-{
-	Vector e0 = p1 - p0;
-	Vector e1 = p2 - p0;
-	Vector cross;
-
-	CrossProduct( e0, e1, cross );
-	return 0.5 * cross.Length();
-}
+// TetrahedronVolume() and TriangleArea() used to be defined here as file-local
+// statics. mathlib now declares them in public/mathlib/mathlib.h (and defines
+// them in mathlib_base.cpp) with identical math, so the local copies clashed
+// with the non-static declarations. Use the mathlib versions.
 
 
 //-----------------------------------------------------------------------------
