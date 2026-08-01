@@ -18,7 +18,7 @@
 #include "filesystem.h"
 #include "mathlib/vector.h" // @Note (toml 05-01-02): solely for definition of QAngle
 #include "qlimits.h"
-#include "SteamCommon.h"
+#include "steamcommon.h"
 #include "steam/steamclientpublic.h"
 
 

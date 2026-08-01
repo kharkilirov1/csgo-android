@@ -12,7 +12,7 @@
 #include "sv_steamauth.h"
 #include "GameEventManager.h"
 #include "proto_oob.h"
-#include "tier1/commandbuffer.h"
+#include "tier1/CommandBuffer.h"
 #include "net.h"
 
 // memdbgon must be the last include file in a .cpp file!!!

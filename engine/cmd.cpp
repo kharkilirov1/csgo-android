@@ -25,7 +25,7 @@
 #include "netmessages.h"
 #include "client.h"
 #include "sv_plugin.h"
-#include "tier1/commandbuffer.h"
+#include "tier1/CommandBuffer.h"
 #include "cvar.h"
 #include "vstdlib/random.h"
 #include "tier1/utldict.h"

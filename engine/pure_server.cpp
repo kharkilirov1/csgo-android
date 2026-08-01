@@ -12,12 +12,12 @@
 #include "userid.h"
 #include "pure_server.h"
 #include "common.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "convar.h"
 #include "filesystem_engine.h"
 #include "server.h"
 #include "sv_filter.h"
-#include <utlsortvector.h>
+#include <UtlSortVector.h>
 
 extern ConVar sv_pure_consensus;
 extern ConVar sv_pure_retiretime;

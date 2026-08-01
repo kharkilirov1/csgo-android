@@ -14,7 +14,7 @@
 #include <malloc.h>
 #endif // ! _PS3
 #include "vgui_surfacelib/BitmapFont.h"
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "tier0/dbg.h"
 #include "vgui_surfacelib/ifontsurface.h"
 #include "tier0/mem.h"

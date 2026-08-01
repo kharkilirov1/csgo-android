@@ -26,7 +26,7 @@
 #include "lightcache.h"
 #include "cl_main.h"
 #include "materialsystem/imaterial.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 #include "cache_hints.h"
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

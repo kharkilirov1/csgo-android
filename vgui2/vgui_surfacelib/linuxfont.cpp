@@ -19,7 +19,7 @@
 #include <fontconfig/fontconfig.h>
 #include "materialsystem/imaterialsystem.h"
 
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "FontEffects.h"
 
 // memdbgon must be the last include file in a .cpp file!!!

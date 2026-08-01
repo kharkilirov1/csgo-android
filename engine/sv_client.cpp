@@ -26,7 +26,7 @@
 #include "sv_plugin.h"
 #include "download.h"
 #include "cmodel_engine.h"
-#include "tier1/commandbuffer.h"
+#include "tier1/CommandBuffer.h"
 #include "gl_cvars.h"
 #include "tier2/tier2.h"
 #include "matchmaking/imatchframework.h"

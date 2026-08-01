@@ -16,7 +16,7 @@
 #include "bitmap/tgawriter.h"
 #include <tier2/tier2.h>
 #include "filesystem_init.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "host.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
