@@ -28,7 +28,8 @@ def build(bld):
 		'resample.cpp',
 		'tgaloader.cpp',
 		'tgawriter.cpp',
-		'bitmap.cpp'
+		'bitmap.cpp',
+		'texturepacker.cpp'
 	]
 	
 	if bld.env.DEST_OS == 'win32':

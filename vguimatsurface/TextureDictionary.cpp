@@ -23,6 +23,25 @@
 
 #define TEXTURE_ID_UNKNOWN	-1
 
+// Refcount-safe pointer assignment. The CS:GO tree has this as a shared tier1
+// helper, but that header was not part of the import and this is its only use
+// here. AddRef the source before releasing the destination so that assigning a
+// pointer to itself cannot drop the last reference.
+template < typename T >
+static inline void SafeAssign( T **ppDest, T *pSrc )
+{
+	Assert( ppDest );
+	if ( pSrc )
+	{
+		pSrc->AddRef();
+	}
+	if ( *ppDest )
+	{
+		(*ppDest)->Release();
+	}
+	*ppDest = pSrc;
+}
+
 class CMatSystemTexture;
 
 // Case-sensitive string checksum

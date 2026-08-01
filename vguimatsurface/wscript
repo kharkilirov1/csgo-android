@@ -23,7 +23,6 @@ def build(bld):
 		'Clip2D.cpp',
 		'Cursor.cpp',
 		'../public/filesystem_helpers.cpp',
-		'FontTextureCache.cpp',
 		'Input.cpp',
 		'MatSystemSurface.cpp',
 		'asanstubs.cpp',
@@ -48,7 +47,7 @@ def build(bld):
 
 	defines = []
 
-	libs = ['bitmap','mathlib','tier0','interfaces','vgui_controls','tier1','vstdlib','tier2','tier3','vgui_surfacelib','FT2','FC','SDL2']
+	libs = ['bitmap','mathlib','tier0','interfaces','vgui_controls','tier1','vstdlib','tier2','tier3','vgui_surfacelib','dmxloader','FT2','FC','SDL2']
 
 	if bld.env.DEST_OS == 'android':
 		libs += ['EXPAT']

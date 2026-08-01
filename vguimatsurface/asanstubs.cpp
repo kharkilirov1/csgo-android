@@ -24,9 +24,9 @@ VPanel::~VPanel()
 {
 }
 
-void VPanel::TraverseLevel( int val )
-{
-}
+// NOTE: VPanel::TraverseLevel() was stubbed here, but the current VPanel no
+// longer declares it, so the stub had no matching declaration (and nothing can
+// call it).
 
 void VPanel::Init(IClientPanel *attachedClientPanel)
 {
@@ -218,5 +218,23 @@ bool VPanel::IsMouseInputEnabled()
 }
 
 void VPanel::SetSiblingPin(VPanel *newSibling, byte iMyCornerToPin, byte iSiblingCornerToPinTo )
+{
+}
+
+// The real VPanel builds this table with BEGIN_DMXELEMENT_UNPACK_NAMESPACE in
+// VPanel.cpp. These stubs have no serialization, so an empty table is enough to
+// satisfy the vtable and the static member.
+DmxElementUnpackStructure_t *VPanel::s_pUnpackParams = NULL;
+
+void VPanel::SetMessageContextId( int nContextId )
+{
+}
+
+int VPanel::GetMessageContextId()
+{
+	return 0;
+}
+
+void VPanel::OnUnserialized( CDmxElement *pElement )
 {
 }
