@@ -13,6 +13,7 @@
 #include "utlsymbol.h"
 #include "tier1/strtools.h" 
 #include "vcollide_parse_private.h"
+#include "vphysics_saverestore.h"
 #include "ctype.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -129,6 +130,8 @@ public:
 	virtual const char *GetString( unsigned short stringTableIndex ) const;
 	virtual const char *GetPropName( int surfaceDataIndex ) const;
 	virtual void SetWorldMaterialIndexTable( int *pMapArray, int mapSize );
+	// Save/restore ops that remap surface material indices across a load.
+	virtual ISaveRestoreOps* GetMaterialIndexDataOps() const { return ::MaterialIndexDataOps(); }
 	virtual int RemapIVPMaterialIndex( int ivpMaterialIndex ) const
 	{
 		return m_ivpManager.RemapIVPMaterialIndex( ivpMaterialIndex );

@@ -324,8 +324,16 @@ void CPhysicsObject::RecheckCollisionFilter()
 	m_callbacks &= ~CALLBACK_ENABLING_COLLISION;
 }
 
-void CPhysicsObject::RecheckContactPoints()
+void CPhysicsObject::RecheckContactPoints( bool bSearchForNewContacts )
 {
+	// The sweep below only removes contacts the filter now rejects. If the
+	// caller also wants contacts that just became legal, ask IVP to
+	// re-evaluate this object's collisions.
+	if ( bSearchForNewContacts )
+	{
+		RecheckCollisionFilter();
+	}
+
 	IVP_Environment *pEnv = m_pObject->get_environment();
 	IVP_Collision_Filter *coll_filter = pEnv->get_collision_filter();
 	IPhysicsFrictionSnapshot *pSnapshot = CreateFrictionSnapshot();
@@ -1277,6 +1285,46 @@ float CPhysicsObject::GetSphereRadius() const
 		return 0;
 
 	return ConvertDistanceToHL( m_pObject->to_ball()->get_radius() );
+}
+
+void CPhysicsObject::SetSphereRadius( float radius )
+{
+	if ( m_collideType != COLLIDE_BALL )
+		return;
+
+	// IVP stores a sphere's radius as the object's extra collision radius;
+	// GetSphereRadius() reads it back through IVP_Ball::get_radius().
+	BEGIN_IVP_ALLOCATION();
+	m_pObject->set_extra_radius( ConvertDistanceToIVP( radius ) );
+	END_IVP_ALLOCATION();
+}
+
+// NOTE: the flag is recorded faithfully, but this vphysics applies gravity per
+// environment (IVP has no per-object gravity), so nothing consumes it yet.
+// Objects flagged here still fall under the environment gravity.
+void CPhysicsObject::SetUseAlternateGravity( bool bSet )
+{
+	m_useAlternateGravity = bSet;
+}
+
+void CPhysicsObject::SetCollisionHints( uint32 collisionHints )
+{
+	m_collisionHints = collisionHints;
+}
+
+// This build has no predicted-physics implementation. Returning NULL is the
+// documented "not predicted" answer - IPhysicsObject::IsPredicted() is defined
+// as GetPredictedInterface() != NULL.
+IPredictedPhysicsObject *CPhysicsObject::GetPredictedInterface( void ) const
+{
+	return NULL;
+}
+
+// Part of the predicted-physics API (copy simulation state from the object
+// being predicted). Without prediction support there is nothing to mirror.
+void CPhysicsObject::SyncWith( IPhysicsObject *pOther )
+{
+	NOTE_UNUSED( pOther );
 }
 
 float CPhysicsObject::CalculateLinearDrag( const Vector &unitDirection ) const

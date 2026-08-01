@@ -1272,6 +1272,86 @@ void CPhysicsEnvironment::GetGravity( Vector *pGravityVector ) const
 }
 
 
+// Alternate gravity is stored for objects flagged with
+// IPhysicsObject::SetUseAlternateGravity(). NOTE: IVP applies gravity per
+// environment, so nothing consumes this yet - flagged objects still fall under
+// the regular gravity above.
+void CPhysicsEnvironment::SetAlternateGravity( const Vector &gravityVector )
+{
+	m_alternateGravity = gravityVector;
+}
+
+void CPhysicsEnvironment::GetAlternateGravity( Vector *pGravityVector ) const
+{
+	if ( pGravityVector )
+	{
+		*pGravityVector = m_alternateGravity;
+	}
+}
+
+// How much wall-clock time `maxTicks` simulation ticks cover; callers use it to
+// clamp a frame's simulation time.
+float CPhysicsEnvironment::GetDeltaFrameTime( int maxTicks ) const
+{
+	return maxTicks * GetSimulationTimestep();
+}
+
+void CPhysicsEnvironment::ForceObjectsToSleep( IPhysicsObject **pList, int listCount )
+{
+	for ( int i = 0; i < listCount; i++ )
+	{
+		if ( pList[i] )
+		{
+			pList[i]->Sleep();
+		}
+	}
+}
+
+// Predicted-physics bookkeeping. The flags are tracked honestly, but this
+// vphysics keeps no per-command simulation history, so there is nothing to roll
+// back or restore. Client code only takes the rollback path when it has enabled
+// prediction via SetPredicted(), which nothing does by default.
+void CPhysicsEnvironment::SetPredicted( bool bPredicted )
+{
+	m_bPredicted = bPredicted;
+}
+
+bool CPhysicsEnvironment::IsPredicted( void )
+{
+	return m_bPredicted;
+}
+
+void CPhysicsEnvironment::SetPredictionCommandNum( int iCommandNum )
+{
+	m_predictionCommandNum = iCommandNum;
+}
+
+int CPhysicsEnvironment::GetPredictionCommandNum( void )
+{
+	return m_predictionCommandNum;
+}
+
+void CPhysicsEnvironment::DoneReferencingPreviousCommands( int iCommandNum )
+{
+	// No saved per-command state to release.
+	NOTE_UNUSED( iCommandNum );
+}
+
+void CPhysicsEnvironment::RestorePredictedSimulation( void )
+{
+	// No saved simulation snapshot to restore.
+}
+
+// Defer destroying a collide until the dead objects that reference it have
+// actually been deleted (see ClearDeadObjects).
+void CPhysicsEnvironment::DestroyCollideOnDeadObjectFlush( CPhysCollide *pCollide )
+{
+	if ( pCollide && m_deadCollides.Find( pCollide ) == -1 )
+	{
+		m_deadCollides.AddToTail( pCollide );
+	}
+}
+
 IPhysicsObject *CPhysicsEnvironment::CreatePolyObject( const CPhysCollide *pCollisionModel, int materialIndex, const Vector& position, const QAngle& angles, objectparams_t *pParams )
 {
 	IPhysicsObject *pObject = ::CreatePhysicsObject( this, pCollisionModel, materialIndex, position, angles, pParams, false );
@@ -1710,6 +1790,15 @@ void CPhysicsEnvironment::ClearDeadObjects( void )
 	}
 	m_deadObjects.Purge();
 	m_pDeleteQueue->DeleteAll();
+
+	// Collides queued by DestroyCollideOnDeadObjectFlush() are only safe to
+	// free now that every object referencing them is gone.
+	extern IPhysicsCollision *physcollision;
+	for ( int i = 0; i < m_deadCollides.Count(); i++ )
+	{
+		physcollision->DestroyCollide( m_deadCollides.Element(i) );
+	}
+	m_deadCollides.Purge();
 }
 
 void CPhysicsEnvironment::AddPlayerController( IPhysicsPlayerController *pController )

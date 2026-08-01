@@ -103,8 +103,15 @@ public:
 	// begins parsing a vcollide.  NOTE: This keeps pointers to the text
 	// If you delete the text and call members of IVPhysicsKeyParser, it will crash
 	virtual IVPhysicsKeyParser	*VPhysicsKeyParserCreate( const char *pKeyData );
+	virtual IVPhysicsKeyParser	*VPhysicsKeyParserCreate( vcollide_t *pVCollide );
 	// Free the parser created by VPhysicsKeyParserCreate
 	virtual void			VPhysicsKeyParserDestroy( IVPhysicsKeyParser *pParser );
+
+	virtual float			CollideGetRadius( const CPhysCollide *pCollide );
+	virtual void			*VCollideAllocUserData( vcollide_t *pVCollide, size_t userDataSize );
+	virtual void			VCollideFreeUserData( vcollide_t *pVCollide );
+	virtual void			VCollideCheck( vcollide_t *pVCollide, const char *pName );
+	virtual bool			TraceBoxAA( const Ray_t &ray, const CPhysCollide *pCollide, trace_t *ptr );
 
 	// creates a list of verts from a collision mesh
 	int	CreateDebugMesh( const CPhysCollide *pCollisionModel, Vector **outVerts );
@@ -1664,10 +1671,88 @@ IVPhysicsKeyParser *CPhysicsCollision::VPhysicsKeyParserCreate( const char *pKey
 	return CreateVPhysicsKeyParser( pKeyData );
 }
 
+// Same, but taking the vcollide directly. Packed key data would need
+// CPackedPhysicsDescription, which this tree only forward-declares; nothing
+// here produces packed vcollides (isPacked is only ever cleared), so parse the
+// plain key text and assert if packed data ever shows up.
+IVPhysicsKeyParser *CPhysicsCollision::VPhysicsKeyParserCreate( vcollide_t *pVCollide )
+{
+	if ( !pVCollide )
+		return NULL;
+	AssertMsg( !pVCollide->isPacked, "packed vcollide keyvalues are not supported" );
+	return CreateVPhysicsKeyParser( pVCollide->pKeyValues );
+}
+
 // Free the parser created by VPhysicsKeyParserCreate
 void CPhysicsCollision::VPhysicsKeyParserDestroy( IVPhysicsKeyParser *pParser )
 {
 	DestroyVPhysicsKeyParser( pParser );
+}
+
+// Radius of a sphere at the collide's origin that contains the whole collide.
+// IVP already stores exactly this on the compact surface.
+float CPhysicsCollision::CollideGetRadius( const CPhysCollide *pCollide )
+{
+	if ( !pCollide )
+		return 0.0f;
+
+	const IVP_Compact_Surface *pSurface = ConvertPhysCollideToCompactSurface( pCollide );
+	if ( !pSurface )
+		return 0.0f;
+
+	return ConvertDistanceToHL( pSurface->upper_limit_radius );
+}
+
+// Game code hangs a blob (e.g. the ragdoll cache) off the vcollide. Owning the
+// allocation here keeps it symmetric with VCollideFreeUserData().
+void *CPhysicsCollision::VCollideAllocUserData( vcollide_t *pVCollide, size_t userDataSize )
+{
+	if ( !pVCollide )
+		return NULL;
+
+	VCollideFreeUserData( pVCollide );
+
+	if ( userDataSize )
+	{
+		pVCollide->pUserData = calloc( 1, userDataSize );
+	}
+	return pVCollide->pUserData;
+}
+
+void CPhysicsCollision::VCollideFreeUserData( vcollide_t *pVCollide )
+{
+	if ( pVCollide && pVCollide->pUserData )
+	{
+		free( pVCollide->pUserData );
+		pVCollide->pUserData = NULL;
+	}
+}
+
+// Debug validation hook - warn about vcollides that carry no usable solids.
+void CPhysicsCollision::VCollideCheck( vcollide_t *pVCollide, const char *pName )
+{
+#ifdef _DEBUG
+	if ( !pVCollide )
+		return;
+
+	for ( int i = 0; i < pVCollide->solidCount; i++ )
+	{
+		if ( !pVCollide->solids[i] )
+		{
+			Warning( "VCollideCheck: %s has a NULL solid at index %d\n", pName ? pName : "?", i );
+		}
+	}
+#else
+	NOTE_UNUSED( pVCollide );
+	NOTE_UNUSED( pName );
+#endif
+}
+
+// Box trace against an untransformed (axis-aligned) collide.
+bool CPhysicsCollision::TraceBoxAA( const Ray_t &ray, const CPhysCollide *pCollide, trace_t *ptr )
+{
+	TraceBox( ray, MASK_ALL, NULL, pCollide, vec3_origin, vec3_angle, ptr );
+	return ptr->DidHit();
 }
 
 IPhysicsCollision *CPhysicsCollision::ThreadContextCreate( void )

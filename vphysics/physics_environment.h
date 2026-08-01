@@ -69,6 +69,19 @@ public:
 	float			GetNextFrameTime() const;
 	bool			IsInSimulation() const;
 
+	// CS:GO-era additions.
+	virtual void	SetAlternateGravity( const Vector &gravityVector );
+	virtual void	GetAlternateGravity( Vector *pGravityVector ) const;
+	virtual float	GetDeltaFrameTime( int maxTicks ) const;
+	virtual void	ForceObjectsToSleep( IPhysicsObject **pList, int listCount );
+	virtual void	SetPredicted( bool bPredicted );
+	virtual bool	IsPredicted( void );
+	virtual void	SetPredictionCommandNum( int iCommandNum );
+	virtual int		GetPredictionCommandNum( void );
+	virtual void	DoneReferencingPreviousCommands( int iCommandNum );
+	virtual void	RestorePredictedSimulation( void );
+	virtual void	DestroyCollideOnDeadObjectFlush( CPhysCollide *pCollide );
+
 	virtual void DestroyObject( IPhysicsObject * );
 	virtual void DestroySpring( IPhysicsSpring * );
 	virtual void DestroyFluidController( IPhysicsFluidController * );
@@ -151,6 +164,10 @@ private:
 	IVPhysicsDebugOverlay			*m_pDebugOverlay;			// Interface to use for drawing debug overlays.
 	CUtlVector<IPhysicsObject *>	m_objects;
 	CUtlVector<IPhysicsObject *>	m_deadObjects;
+	CUtlVector<CPhysCollide *>		m_deadCollides;
+	Vector							m_alternateGravity;
+	int								m_predictionCommandNum;
+	bool							m_bPredicted;
 	CUtlVector<CPhysicsFluidController *> m_fluids;
 	CUtlVector<IPhysicsPlayerController *> m_playerControllers;
 	CSleepObjects					*m_pSleepEvents;

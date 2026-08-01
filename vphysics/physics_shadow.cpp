@@ -157,6 +157,7 @@ public:
 	void Update( const Vector& position, const Vector& velocity, float secondsToArrival, bool onground, IPhysicsObject *ground );
 	void MaxSpeed( const Vector &velocity );
 	bool IsInContact( void );
+	virtual uint32 GetContactState( uint16 nGameFlags );
 	virtual bool WasFrozen() 
 	{ 	
 		IVP_Real_Object *pivp = m_pObject->GetObject();
@@ -704,6 +705,56 @@ void CPlayerController::GetShadowVelocity( Vector *velocity )
 	}
 }
 
+
+// Same contact walk as IsInContact(), but reports both what kind of contact we
+// have: PLAYER_CONTACT_PHYSICS for a physically simulated (not game-driven)
+// object, and PLAYER_CONTACT_GAMEOBJECT for one whose game flags match
+// nGameFlags (e.g. FVPHYSICS_PUSH_PLAYER movers).
+uint32 CPlayerController::GetContactState( uint16 nGameFlags )
+{
+	uint32 nResult = 0;
+
+	IVP_Real_Object *pivp = m_pObject->GetObject();
+	if ( !pivp->flags.collision_detection_enabled )
+		return nResult;
+
+	IVP_Synapse_Friction *pfriction = pivp->get_first_friction_synapse();
+	while ( pfriction )
+	{
+		extern IVP_Real_Object *GetOppositeSynapseObject( IVP_Synapse_Friction *pfriction );
+
+		IVP_Real_Object *pobj = GetOppositeSynapseObject( pfriction );
+		if ( pobj->flags.collision_detection_enabled )
+		{
+			// skip if this is a static object
+			if ( !pobj->get_core()->physical_unmoveable && !pobj->get_core()->pinned )
+			{
+				CPhysicsObject *pPhys = static_cast<CPhysicsObject *>(pobj->client_data);
+				if ( pPhys )
+				{
+					// A game-controlled shadow object isn't a physics contact;
+					// anything else means we're touching simulated physics.
+					if ( !pPhys->IsControlledByGame() )
+					{
+						nResult |= PLAYER_CONTACT_PHYSICS;
+					}
+
+					if ( pPhys->GetGameFlags() & nGameFlags )
+					{
+						nResult |= PLAYER_CONTACT_GAMEOBJECT;
+					}
+
+					if ( nResult == (PLAYER_CONTACT_PHYSICS|PLAYER_CONTACT_GAMEOBJECT) )
+						return nResult;
+				}
+			}
+		}
+
+		pfriction = pfriction->get_next();
+	}
+
+	return nResult;
+}
 
 bool CPlayerController::IsInContact( void )
 {
