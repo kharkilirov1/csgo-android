@@ -436,7 +436,10 @@ def build(bld):
 			'osrng.cpp', 'pch.cpp', 'pkcspad.cpp', 'pubkey.cpp', 'queue.cpp',
 			'randpool.cpp', 'rdtables.cpp', 'rijndael.cpp', 'rng.cpp',
 			'rsa.cpp', 'sha.cpp', 'simple.cpp', 'skipjack.cpp', 'strciphr.cpp',
-			'trdlocal.cpp'
+			'trdlocal.cpp',
+			# Provides the SecBlock allocator instantiations that dll.cpp
+			# normally supplies; clang/lld need them explicitly (see file).
+			'secblock_instantiate.cpp'
 		]
 		bld.stlib(
 			source = ['../external/crypto++-5.61/' + item for item in cryptopp_sources],
