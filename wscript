@@ -91,6 +91,7 @@ projects={
 			'thirdparty/libjpeg',
 			'videocfg',
 		'localize',
+		'scaleformui',
 		'vgui2/matsys_controls',
 		'vgui2/src',
 		'vgui2/vgui_controls',

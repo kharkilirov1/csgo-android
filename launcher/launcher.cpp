@@ -85,6 +85,11 @@
 #include "xbox/xbox_launch.h"
 #endif
 
+// For SCALEFORMUI_INTERFACE_VERSION when loading the Scaleform module (or, in
+// this tree, its no-op stub).
+#include "tier1/convar.h"
+#include "scaleformui/scaleformui.h"
+
 #ifdef LINUX
 #include "SDL.h"
 
@@ -804,8 +809,26 @@ bool CSourceAppSystemGroup::Create()
 			{ "", "" }
 		};
 
-		if ( !AddSystems( scaleformInfo ) ) 
-			return false;	
+		if ( !AddSystems( scaleformInfo ) )
+			return false;
+	}
+#else
+	{
+		// No Autodesk GFx in this tree, so "scaleformui" is the no-op stub
+		// module. Game code calls ScaleformUI() unconditionally, so it still
+		// has to resolve to something - otherwise every sfhud_* call site
+		// dereferences NULL. Only warn if it's missing: the engine boots fine
+		// without Scaleform, and a packaging slip shouldn't block startup.
+		AppSystemInfo_t scaleformInfo[] =
+		{
+			{ LAUNCHER_APPSYSTEM( "scaleformui" ),		SCALEFORMUI_INTERFACE_VERSION },
+			{ "", "" }
+		};
+
+		if ( !AddSystems( scaleformInfo ) )
+		{
+			Warning( "Failed to load the scaleformui stub; Scaleform UI calls will be unavailable.\n" );
+		}
 	}
 #endif // INCLUDE_SCALEFORM
 		
