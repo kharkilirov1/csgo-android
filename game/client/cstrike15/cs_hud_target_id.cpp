@@ -9,7 +9,7 @@
 #include "hudelement.h"
 #include "c_cs_player.h"
 #include "c_playerresource.h"
-#include "vgui_EntityPanel.h"
+#include "vgui_entitypanel.h"
 #include "iclientmode.h"
 #include "vgui/ILocalize.h"
 
@@ -52,7 +52,8 @@ private:
 	Color			m_cHostageColor;
 };
 
-// DECLARE_HUDELEMENT( CTargetID );
+// Re-enabled: with no Scaleform backend this is the target ID that draws.
+DECLARE_HUDELEMENT( CTargetID );
 
 using namespace vgui;
 

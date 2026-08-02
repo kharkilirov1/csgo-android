@@ -7,7 +7,7 @@
 #include "cbase.h"
 #include "hudelement.h"
 #include <vgui_controls/Panel.h>
-#include <vgui/isurface.h>
+#include <vgui/ISurface.h>
 #include "clientmode_csnormal.h"
 #include "cs_gamerules.h"
 #include "hud_basetimer.h"
@@ -54,7 +54,8 @@ private:
 };
 
 
-// DECLARE_HUDELEMENT( CHudRoundTimer );
+// Re-enabled: with no Scaleform backend this is the round timer that draws.
+DECLARE_HUDELEMENT( CHudRoundTimer );
 
 
 CHudRoundTimer::CHudRoundTimer( const char *pName ) :
