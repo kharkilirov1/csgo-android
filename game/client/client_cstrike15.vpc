@@ -463,6 +463,8 @@ $Project "Client (CSGO)"
 				// GFx available they are what actually draws.
 				$File	"hud_base_account.cpp"
 				$File	"cstrike15\cs_hud_account.cpp"
+				$File	"cstrike15\cs_hud_health.cpp"
+				$File	"cstrike15\cs_hud_armor.cpp"
 				$File	"cstrike15\hud_roundtimer.cpp"
 				$File	"cstrike15\cs_hud_target_id.cpp"
 				$File	"cstrike15\radio_status.cpp"
