@@ -1,0 +1,114 @@
+name: Publish ARM64 preview APK
+
+on:
+  push:
+    branches:
+      - local/fix-all-gaps
+    paths:
+      - .github/workflows/publish-apk.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run source regression tests
+        run: |
+          python3 android/csgo-launcher/tests/check_launcher_integration.py
+          python3 unittests/core_runtime_source_checks.py
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libfreetype6-dev libopenal-dev libcurl4-openssl-dev \
+            libedit-dev libjpeg-dev libpng-dev libbz2-dev unzip
+
+      - name: Fetch and verify NDK r20b
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip -O ndk.zip
+          . scripts/android-aarch64-common.sh
+          printf '%s  %s\n' "$ANDROID_NDK_R20B_SHA256" ndk.zip | sha256sum -c -
+          unzip -q ndk.zip
+          rm ndk.zip
+
+      - name: Build engine for arm64
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+        run: scripts/build-android-aarch64.sh
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android SDK 35
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Package and verify APK
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          CSGO_VERSION_CODE: ${{ github.run_number }}
+          CSGO_VERSION_NAME: 0.1.0-arm64-preview.${{ github.run_number }}
+        run: scripts/build-apk-aarch64.sh
+
+      - name: Prepare release assets
+        run: |
+          cp android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk \
+            "$RUNNER_TEMP/csgo-android-arm64-debug.apk"
+          cd "$RUNNER_TEMP"
+          sha256sum csgo-android-arm64-debug.apk > csgo-android-arm64-debug.apk.sha256
+
+      - name: Keep APK as an Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: csgo-android-arm64-debug
+          path: |
+            ${{ runner.temp }}/csgo-android-arm64-debug.apk
+            ${{ runner.temp }}/csgo-android-arm64-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v0.1.0-arm64-preview.1
+          RELEASE_TARGET: eda95d7657e2b5ac4cbd36de34ba6cf97eab51f4
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          ARM64 preview build of the CS:GO Android launcher and open-source engine.
+
+          - Android 9 (API 28) or newer
+          - ARM64-v8a devices only
+          - Debug-signed APK
+          - Package: com.kharki.csgo
+          - Includes the launcher/bootstrap payload, but no proprietary CS:GO game files
+
+          Built from commit eda95d7657e2b5ac4cbd36de34ba6cf97eab51f4.
+          NOTES
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              "$RUNNER_TEMP/csgo-android-arm64-debug.apk" \
+              "$RUNNER_TEMP/csgo-android-arm64-debug.apk.sha256" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$RUNNER_TEMP/csgo-android-arm64-debug.apk" \
+              "$RUNNER_TEMP/csgo-android-arm64-debug.apk.sha256" \
+              --target "$RELEASE_TARGET" \
+              --title "CS:GO Android ARM64 Preview" \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
+              --prerelease
+          fi
