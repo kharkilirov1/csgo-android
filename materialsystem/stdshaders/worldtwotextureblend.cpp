@@ -16,8 +16,8 @@
 #endif
 
 #include "lightmappedgeneric_vs20.inc"
-#include "worldtwotextureblend_ps20.inc"
-#include "worldtwotextureblend_ps20b.inc"
+#include "WorldTwoTextureBlend_ps20.inc"
+#include "WorldTwoTextureBlend_ps20b.inc"
 
 #include "shaderapifast.h"
 

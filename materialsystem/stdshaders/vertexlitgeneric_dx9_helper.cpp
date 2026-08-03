@@ -9,8 +9,8 @@
 #include "vertexlitgeneric_dx9_helper.h"
 #include "phong_dx9_helper.h"
 
-#include "vertexlit_and_unlit_generic_vs20.inc"
-#include "vertexlit_and_unlit_generic_bump_vs20.inc"
+#include "VertexLit_and_unlit_Generic_vs20.inc"
+#include "VertexLit_and_unlit_Generic_bump_vs20.inc"
 
 #include "vertexlit_and_unlit_generic_ps20.inc"
 #include "vertexlit_and_unlit_generic_ps20b.inc"
