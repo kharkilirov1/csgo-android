@@ -1,0 +1,101 @@
+name: Release APK (arm64)
+
+# Builds the arm64 engine, packages it into an APK and publishes it as a
+# GitHub release. Mirrors scripts/build-android-aarch64.sh and
+# scripts/build-apk-aarch64.sh.
+#
+# The APK contains the engine only - no game content ships with it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag"
+        required: true
+        default: "v0.1.0"
+      prerelease:
+        description: "Mark as prerelease"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libfreetype6-dev libopenal-dev libcurl4-openssl-dev \
+            libedit-dev libjpeg-dev libpng-dev libbz2-dev unzip
+
+      - name: Fetch NDK r20b
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip -O ndk.zip
+          unzip -q ndk.zip
+          rm ndk.zip
+
+      - name: Build engine for arm64
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+        run: |
+          ./waf configure -T debug --android=aarch64,clang,28 --togles \
+            --build-games=csgo --disable-warns
+          # -k so the non-runtime targets (vtex_dll, ServerBrowser,
+          # video_services) don't abort the packaging step.
+          ./waf build -k -j$(nproc) || true
+
+      - name: Verify the runtime modules were produced
+        run: |
+          missing=0
+          for m in engine filesystem_stdio inputsystem vphysics materialsystem \
+                   datacache studiorender soundemittersystem vscript \
+                   vguimatsurface vgui2 scaleformui stdshader_dx9 launcher \
+                   client server; do
+            if ! find build -name "lib$m.so" | grep -q .; then
+              echo "::error::missing lib$m.so"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Package APK
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        run: |
+          chmod +x scripts/build-apk-aarch64.sh
+          scripts/build-apk-aarch64.sh
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk
+          cp "$APK" "csgo-android-${{ inputs.tag }}-arm64.apk"
+          gh release create "${{ inputs.tag }}" \
+            "csgo-android-${{ inputs.tag }}-arm64.apk" \
+            --title "CS:GO Android ${{ inputs.tag }} (arm64)" \
+            --notes "Engine-only debug build for arm64-v8a.
+
+          Contains no game content: maps, models, materials and sounds must come
+          from a CS:GO installation. Built from \`${{ github.sha }}\`.
+
+          Untested on hardware." \
+            ${{ inputs.prerelease && '--prerelease' || '' }}
