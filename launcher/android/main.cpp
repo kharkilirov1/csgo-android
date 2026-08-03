@@ -30,10 +30,27 @@ int iLastArgs = 0;
 extern void InitCrashHandler();
 DLL_EXPORT int LauncherMain( int argc, char **argv ); // from launcher.cpp
 
-DLL_EXPORT int Java_com_valvesoftware_ValveActivity2_setenv(JNIEnv *jenv, jclass *jclass, jstring env, jstring value, jint over)
+DLL_EXPORT int Java_com_valvesoftware_ValveActivity2_setenv(JNIEnv *jenv, jclass clazz, jstring env, jstring value, jint over)
 {
-	Msg( "Java_com_valvesoftware_ValveActivity2_setenv %s=%s\n", jenv->GetStringUTFChars(env, NULL), jenv->GetStringUTFChars(value, NULL) );
-	return setenv( jenv->GetStringUTFChars(env, NULL), jenv->GetStringUTFChars(value, NULL), over );
+	if ( !env || !value )
+		return -1;
+
+	const char *nameChars = jenv->GetStringUTFChars( env, NULL );
+	const char *valueChars = jenv->GetStringUTFChars( value, NULL );
+	if ( !nameChars || !valueChars )
+	{
+		if ( nameChars )
+			jenv->ReleaseStringUTFChars( env, nameChars );
+		if ( valueChars )
+			jenv->ReleaseStringUTFChars( value, valueChars );
+		return -1;
+	}
+
+	Msg( "Java environment: %s=<%u bytes>\n", nameChars, (unsigned)strlen( valueChars ) );
+	int result = setenv( nameChars, valueChars, over );
+	jenv->ReleaseStringUTFChars( env, nameChars );
+	jenv->ReleaseStringUTFChars( value, valueChars );
+	return result;
 }
 
 DLL_EXPORT void Java_com_valvesoftware_ValveActivity2_nativeOnActivityResult()
@@ -41,30 +58,48 @@ DLL_EXPORT void Java_com_valvesoftware_ValveActivity2_nativeOnActivityResult()
 //	Msg( "Java_com_valvesoftware_ValveActivity_nativeOnActivityResult\n" );
 }
 
-DLL_EXPORT void Java_com_valvesoftware_ValveActivity2_setArgs(JNIEnv *env, jclass *clazz, jstring str)
+DLL_EXPORT void Java_com_valvesoftware_ValveActivity2_setArgs(JNIEnv *env, jclass clazz, jstring str)
 {
-	strncpy( java_args, env->GetStringUTFChars(str, NULL), sizeof java_args );
+	java_args[0] = '\0';
+	if ( !str )
+		return;
+
+	const char *args = env->GetStringUTFChars( str, NULL );
+	if ( !args )
+		return;
+
+	strncpy( java_args, args, sizeof( java_args ) - 1 );
+	java_args[sizeof( java_args ) - 1] = '\0';
+	env->ReleaseStringUTFChars( str, args );
 }
 
 void SetLauncherArgs()
 {
-#define A(a,b) LauncherArgv[iLastArgs++] = (char*)a; \
-	LauncherArgv[iLastArgs++] = (char*)b
-#define D(a) LauncherArgv[iLastArgs++] = (char*)a
+#define D(a) do { if ( iLastArgs < (int)( sizeof( LauncherArgv ) / sizeof( LauncherArgv[0] ) ) ) LauncherArgv[iLastArgs++] = (char*)a; } while ( 0 )
+#define A(a,b) do { D(a); D(b); } while ( 0 )
+
+	iLastArgs = 0;
+	memset( LauncherArgv, 0, sizeof( LauncherArgv ) );
 
 	static char binPath[2048];
-	snprintf(binPath, sizeof binPath, "%s/hl2_linux", getenv("APP_DATA_PATH") );
+	const char *appDataPath = getenv( "APP_DATA_PATH" );
+	if ( !appDataPath || !appDataPath[0] )
+		appDataPath = ".";
+	snprintf(binPath, sizeof binPath, "%s/hl2_linux", appDataPath );
 	D(binPath);
+
+	const char *gamePath = getenv( "VALVE_GAME_PATH" );
+	if ( gamePath && gamePath[0] )
+		A( "-basedir", gamePath );
 
 	D("-nouserclip");
 
-	char *pch;
-
-	pch = strtok (java_args," ");
+	char *saveptr = NULL;
+	char *pch = strtok_r( java_args, " ", &saveptr );
 	while (pch != NULL)
 	{
-		LauncherArgv[iLastArgs++] = pch;
-		pch = strtok (NULL, " ");
+		D( pch );
+		pch = strtok_r( NULL, " ", &saveptr );
 	}
 
 	D("-fullscreen");
@@ -130,6 +165,10 @@ DLL_EXPORT int LauncherMainAndroid( int argc, char **argv )
 	android_property_print("ro.product.name");
 
 	SetLauncherArgs();
+
+	const char *gamePath = getenv( "VALVE_GAME_PATH" );
+	if ( gamePath && gamePath[0] && chdir( gamePath ) != 0 )
+		Warning( "Unable to change working directory to selected game root '%s'.\n", gamePath );
 
 	SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
 	DeclareCurrentThreadIsMainThread(); // Init thread propertly on Android

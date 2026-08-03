@@ -34,7 +34,7 @@ public:
 	virtual void Disconnect() {}
 	virtual void *QueryInterface( const char *pInterfaceName )
 	{
-		if ( !V_strcmp( pInterfaceName, SCALEFORMUI_INTERFACE_VERSION ) )
+		if ( pInterfaceName && !V_strcmp( pInterfaceName, SCALEFORMUI_INTERFACE_VERSION ) )
 			return static_cast< IScaleformUI * >( this );
 		return NULL;
 	}
@@ -137,6 +137,10 @@ public:
 
 	virtual void InstallGlobalObject( int slot, const char* elementName, ScaleformUIFunctionHandlerObject* object, const IScaleformUIFunctionHandlerDefinitionTable* tableObject, SFVALUE *pInstalledGlobalObjectResult )
 	{
+		// No object was installed.  Do not leave an output handle containing
+		// whatever happened to be on the caller's stack.
+		if ( pInstalledGlobalObjectResult )
+			*pInstalledGlobalObjectResult = NULL;
 	}
 
 	virtual void RemoveGlobalObject( int slot, SFVALUE element )
@@ -231,7 +235,7 @@ public:
 
 	virtual ButtonCode_t GetCurrentKey(  )
 	{
-		return ButtonCode_t();
+		return BUTTON_CODE_INVALID;
 	}
 
 	virtual void SendUIEvent( const char* action, const char* eventData, int slot )
@@ -348,7 +352,7 @@ public:
 
 	virtual _ScaleModeType MovieView_GetViewScaleMode( SFMOVIE movieView )
 	{
-		return _ScaleModeType();
+		return SM_NoScale;
 	}
 
 	virtual void MovieView_SetViewAlignment( SFMOVIE movieView, _AlignType type )
@@ -357,7 +361,7 @@ public:
 
 	virtual _AlignType MovieView_GetViewAlignment( SFMOVIE movieView )
 	{
-		return _AlignType();
+		return Align_Center;
 	}
 
 	virtual SFVALUE MovieView_CreateObject( SFMOVIE movieView, const char* className, SFVALUEARRAY args, int numArgs )
@@ -387,21 +391,54 @@ public:
 
 	virtual const wchar_t* Translate( const char *key, bool* pIsHTML )
 	{
+		if ( pIsHTML )
+			*pIsHTML = false;
+
+		// Translation requires the unavailable GFx/localization integration.
 		return NULL;
 	}
 
 	virtual const wchar_t* ReplaceGlyphKeywordsWithHTML( const wchar_t* pin, int fontSize, bool bForceControllerGlyph )
 	{
-		return NULL;
+		// Glyph replacement is unsupported, but the wide input is already in
+		// the return representation, so an unchanged string is a safe no-op.
+		return pin;
 	}
 
 	virtual const wchar_t* ReplaceGlyphKeywordsWithHTML( const char* text, int fontSize, bool bForceControllerGlyph )
 	{
+		// The narrow overload would require owned conversion storage.  NULL
+		// keeps that unsupported operation explicit instead of returning a
+		// dangling temporary.
 		return NULL;
 	}
 
 	virtual void MakeStringSafe( const wchar_t* stringin, OUT_Z_BYTECAP(outlength) wchar_t* stringout, int outlength )
 	{
+		if ( !stringout || outlength < static_cast< int >( sizeof( *stringout ) ) )
+			return;
+
+		const int nCapacity = outlength / static_cast< int >( sizeof( *stringout ) );
+		if ( !stringin )
+		{
+			stringout[0] = L'\0';
+			return;
+		}
+
+		// The HTML escaping implementation belongs to the unavailable GFx
+		// backend.  Preserve the caller's text while still honoring the byte
+		// capacity contract and always producing a terminated output string.
+		if ( stringout != stringin )
+		{
+			int i = 0;
+			for ( ; i < nCapacity - 1 && stringin[i] != L'\0'; ++i )
+				stringout[i] = stringin[i];
+			stringout[i] = L'\0';
+		}
+		else
+		{
+			stringout[nCapacity - 1] = L'\0';
+		}
 	}
 
 	virtual void RefreshKeyBindings( void )
@@ -596,6 +633,9 @@ public:
 
 	virtual void CreateValueArray( SFVALUEARRAY& valueArray, int length )
 	{
+		// A non-zero count with a NULL backing store would make operator[]
+		// dereference an invalid handle.  Empty explicitly denotes unsupported.
+		valueArray.SetValues( 0, NULL );
 	}
 
 	virtual SFVALUEARRAY CreateValueArray( int length )
@@ -606,6 +646,7 @@ public:
 	// Deprecated overloads (declared with a trailing comment in the header).
 	virtual void ReleaseValueArray( SFVALUEARRAY& valueArray, int count )
 	{
+		valueArray.SetValues( 0, NULL );
 	}
 
 	virtual bool Value_InvokeWithoutReturn( SFVALUE obj, const char* methodName, const SFVALUEARRAY& args, int numArgs )
@@ -620,6 +661,7 @@ public:
 
 	virtual void ReleaseValueArray( SFVALUEARRAY& valueArray )
 	{
+		valueArray.SetValues( 0, NULL );
 	}
 
 	virtual SFVALUE ValueArray_GetElement( SFVALUEARRAY, int index )
@@ -768,6 +810,20 @@ public:
 
 	virtual void Value_GetDisplayInfo( SFVALUE obj, ScaleformDisplayInfo* dinfo )
 	{
+		if ( dinfo )
+		{
+			// Several callers read these fields directly without consulting the
+			// set flags.  Populate every value so the unsupported object is
+			// deterministically invisible rather than exposing uninitialized data.
+			dinfo->Clear();
+			dinfo->SetX( 0.0 );
+			dinfo->SetY( 0.0 );
+			dinfo->SetRotation( 0.0 );
+			dinfo->SetAlpha( 0.0 );
+			dinfo->SetVisibility( false );
+			dinfo->SetXScale( 100.0 );
+			dinfo->SetYScale( 100.0 );
+		}
 	}
 
 	virtual void Value_SetDisplayInfo( SFVALUE obj, const ScaleformDisplayInfo* dinfo )

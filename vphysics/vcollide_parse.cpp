@@ -404,8 +404,12 @@ void CVPhysicsParse::ParseCollisionRules( ragdollcollisionrules_t *pRules, IVPhy
 		if ( !Q_stricmp( key, "selfcollisions" ) )
 		{
 			// keys are "0" or "1"
-			Assert( atoi(value) == 0 || atoi(value) == 1 );
-			pRules->bSelfCollisions = atoi( value );
+			const int selfCollisions = atoi( value );
+			Assert( selfCollisions == 0 || selfCollisions == 1 );
+			if ( selfCollisions == 0 || selfCollisions == 1 )
+			{
+				pRules->bSelfCollisions = selfCollisions;
+			}
 		}
 		else if ( !Q_stricmp( key, "collisionpair" ) )
 		{
@@ -413,7 +417,8 @@ void CVPhysicsParse::ParseCollisionRules( ragdollcollisionrules_t *pRules, IVPhy
 			if ( pRules->pCollisionSet )
 			{
 				int j0, j1;
-				if ( sscanf( value, "%d,%d", &j0, &j1 ) == 2 )
+				if ( sscanf( value, "%d,%d", &j0, &j1 ) == 2 &&
+					j0 >= 0 && j0 < 32 && j1 >= 0 && j1 < 32 )
 				{
 					pRules->pCollisionSet->EnableCollisions( j0, j1 );
 				}

@@ -943,13 +943,53 @@ bool CSourceAppSystemGroup::PreInit()
 	if ( FileSystem_MountContent( fsInfo ) != FS_OK )
 		return false;
 
-#if defined( SUPPORT_VPK )
+#if defined( SUPPORT_VPK ) || defined( __ANDROID__ )
 	Msg( "start timing %f\n", Plat_FloatTime() );
 	char const *pVPKName = CommandLine()->ParmValue( "-vpk" );
 	if ( pVPKName )
 	{
 		fsInfo.m_pFileSystem->AddVPKFile( pVPKName );
 	}
+
+#if defined( __ANDROID__ )
+	// The Java launcher extracts the bundled touch/UI resources to a normal
+	// app-private file and supplies a comma-separated list here. Mount in
+	// reverse order at the head so the first Java entry (a caller-provided VPK)
+	// has the highest override priority, followed by the bundled extras, then
+	// the game's own VPKs.
+	char const *pExtraVPKList = getenv( "EXTRAS_VPK_PATH" );
+	if ( pExtraVPKList && pExtraVPKList[0] )
+	{
+		char vpkList[8192];
+		char *vpkPaths[32];
+		int vpkCount = 0;
+		V_strncpy( vpkList, pExtraVPKList, sizeof( vpkList ) );
+
+		char *saveptr = NULL;
+		for ( char *path = strtok_r( vpkList, ",", &saveptr );
+			path && vpkCount < ARRAYSIZE( vpkPaths );
+			path = strtok_r( NULL, ",", &saveptr ) )
+		{
+			if ( path[0] )
+				vpkPaths[vpkCount++] = path;
+		}
+
+		for ( int i = vpkCount - 1; i >= 0; --i )
+		{
+			FILE *vpkFile = fopen( vpkPaths[i], "rb" );
+			if ( vpkFile )
+			{
+				fclose( vpkFile );
+				Msg( "Mounting Android extras VPK: %s\n", vpkPaths[i] );
+				fsInfo.m_pFileSystem->AddVPKFile( vpkPaths[i], PATH_ADD_TO_HEAD );
+			}
+			else
+			{
+				Warning( "Android extras VPK is not readable: %s\n", vpkPaths[i] );
+			}
+		}
+	}
+#endif // __ANDROID__
 #endif
 
 	if ( IsPC() || !IsX360() )

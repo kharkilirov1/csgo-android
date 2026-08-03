@@ -11,6 +11,11 @@
     <string name="srceng_launcher_error_test_write">Тест записи провален,файлы будут храниться в </string>
     <string name="srceng_launcher_error_no_permission">Без разрешений игра не будет работать</string>
     <string name="srceng_launcher_error_find_gameinfo">Не удалось обнаружить игровые ресурсы. Провертье указанный путь к игре!</string>
+    <string name="srceng_launcher_error_prepare_vpk">Не удалось подготовить встроенные ресурсы лаунчера. Освободите место во внутренней памяти или переустановите приложение и повторите попытку.</string>
+    <string name="srceng_launcher_storage_access_title">Доступ к файлам игры</string>
+    <string name="srceng_launcher_storage_access_message">На Android 11 и новее нужен доступ ко всем файлам, чтобы нативный движок мог читать и обновлять выбранную папку CS:GO. Лаунчер не отправляет игровые файлы.</string>
+    <string name="srceng_launcher_storage_access_grant">Открыть настройки</string>
+    <string name="srceng_launcher_storage_access_denied">Доступ к файлам игры не предоставлен</string>
 
     <string name="srceng_launcher_command_args">Аргументы командной строки</string>
     <string name="srceng_launcher_env">Env</string>

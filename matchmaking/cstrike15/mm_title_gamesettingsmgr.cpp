@@ -849,9 +849,10 @@ void CMatchTitleGameSettingsMgr::InitializeGameSettings( KeyValues *pSettings, c
 
 #if !defined (NO_STEAM)
 
-		if ( IsPC() && mm_sv_load_test.GetBool() )
+		ISteamUtils *pSteamUtils = steamapicontext ? steamapicontext->SteamUtils() : NULL;
+		if ( IsPC() && mm_sv_load_test.GetBool() && pSteamUtils )
 		{
-			const char* playerCountry = steamapicontext->SteamUtils()->GetIPCountry();
+			const char* playerCountry = pSteamUtils->GetIPCountry();
 			if ( !Q_stricmp( playerCountry, "US") )
 			{
 				pSettings->SetInt( "options/sv_load_test", 1 );
@@ -873,8 +874,9 @@ void CMatchTitleGameSettingsMgr::InitializeGameSettings( KeyValues *pSettings, c
 		uint32 iPlayerClanID = atoi( pClanID );
 
 		kvLocalPlayer->SetInt( "game/clanID", iPlayerClanID );
-		ISteamFriends *pFriends = steamapicontext->SteamFriends();
-		if ( pFriends )
+		ISteamFriends *pFriends = steamapicontext ? steamapicontext->SteamFriends() : NULL;
+		ISteamUtils *pSteamUtils = steamapicontext ? steamapicontext->SteamUtils() : NULL;
+		if ( pFriends && pSteamUtils )
 		{
 			int iGroupCount = pFriends->GetClanCount();
 			for ( int k = 0; k < iGroupCount; ++ k )
@@ -882,7 +884,7 @@ void CMatchTitleGameSettingsMgr::InitializeGameSettings( KeyValues *pSettings, c
 				CSteamID clanID = pFriends->GetClanByIndex( k );
 				if ( clanID.GetAccountID() == iPlayerClanID )
 				{
-					CSteamID clanID( iPlayerClanID, steamapicontext->SteamUtils()->GetConnectedUniverse(), k_EAccountTypeClan );
+					CSteamID clanID( iPlayerClanID, pSteamUtils->GetConnectedUniverse(), k_EAccountTypeClan );
 					// valid clan, accept the change
 					const char *szClanTag = pFriends->GetClanTag( clanID );
 					char chLimitedTag[ MAX_CLAN_TAG_LENGTH ];
@@ -921,7 +923,7 @@ void CMatchTitleGameSettingsMgr::InitializeGameSettings( KeyValues *pSettings, c
 		{
 			kvLocalPlayer->SetString( "game/jclanid", szClanIdOption );
 
-			if ( pFriends )
+			if ( pFriends && pSteamUtils )
 			{
 				int iGroupCount = pFriends->GetClanCount();
 				for ( int k = 0; k < iGroupCount; ++k )
@@ -929,7 +931,7 @@ void CMatchTitleGameSettingsMgr::InitializeGameSettings( KeyValues *pSettings, c
 					CSteamID clanID = pFriends->GetClanByIndex( k );
 					if ( clanID.GetAccountID() == iPlayerClanID )
 					{
-						CSteamID clanID( iPlayerClanID, steamapicontext->SteamUtils()->GetConnectedUniverse(), k_EAccountTypeClan );
+						CSteamID clanID( iPlayerClanID, pSteamUtils->GetConnectedUniverse(), k_EAccountTypeClan );
 						// valid clan, accept the change
 						const char *szClanTag = pFriends->GetClanTag( clanID );
 						char chLimitedTag[ MAX_CLAN_TAG_LENGTH ];
@@ -971,7 +973,8 @@ void CMatchTitleGameSettingsMgr::ExtendGameSettingsUpdateKeys( KeyValues *pSetti
 		if ( uint64 xuid = V_atoui64( szClanIdUpdate ) )
 		{
 			CSteamID steamIdClan( xuid );
-			const char *pTag = steamapicontext->SteamFriends()->GetClanTag( steamIdClan );
+			ISteamFriends *pSteamFriends = steamapicontext ? steamapicontext->SteamFriends() : NULL;
+			const char *pTag = pSteamFriends ? pSteamFriends->GetClanTag( steamIdClan ) : NULL;
 			if ( pTag && *pTag )
 			{
 				char chLimitedTag[ MAX_CLAN_TAG_LENGTH ];
@@ -1082,7 +1085,9 @@ void UpdateAggregateMembersSettings( KeyValues *pFullGameSettings, KeyValues *pU
 	char const *szBestCountry = "";
 	float flBestCountryWeight = 0.0f;
 	CUtlStringMap< float > mapPlayerCountries;
-	static CSteamID s_mysteamid = steamapicontext->SteamUser()->GetSteamID();
+	CSteamID mySteamID;
+	if ( steamapicontext && steamapicontext->SteamUser() )
+		mySteamID = steamapicontext->SteamUser()->GetSteamID();
 	for ( int iMachine = 0, numMachines = pFullGameSettings->GetInt( "members/numMachines" ); iMachine < numMachines; ++iMachine )
 	{
 		KeyValues *pMachine = pFullGameSettings->FindKey( CFmtStr( "members/machine%d", iMachine ) );
@@ -1110,8 +1115,11 @@ void UpdateAggregateMembersSettings( KeyValues *pFullGameSettings, KeyValues *pU
 			UtlSymId_t symid = mapPlayerCountries.Find( szLocation );
 			if ( symid == UTL_INVAL_SYMBOL )
 				symid = mapPlayerCountries.Insert( szLocation, 0.0f );
+			CSteamID playerSteamID( pPlayer->GetUint64( "xuid" ) );
+			bool bLocalSteamPlayer = mySteamID.IsValid() && playerSteamID.IsValid() &&
+				playerSteamID.GetAccountID() == mySteamID.GetAccountID();
 			float flNewWeightOfThisCountry = (
-				mapPlayerCountries[symid] += ( 1.0f + ( ( CSteamID( pPlayer->GetUint64( "xuid" ) ).GetAccountID() == s_mysteamid.GetAccountID() ) ? 0.5f : 0.0f ) )
+				mapPlayerCountries[symid] += ( 1.0f + ( bLocalSteamPlayer ? 0.5f : 0.0f ) )
 				);
 			if ( flNewWeightOfThisCountry > flBestCountryWeight )
 			{

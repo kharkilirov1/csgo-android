@@ -20,7 +20,32 @@
 using namespace vgui;
 
 CHudBaseAccount::CHudBaseAccount( const char *pName ) :
-	CHudNumericDisplay( NULL, pName ), CHudElement( pName )
+	CHudElement( pName ),
+	CHudNumericDisplay( NULL, pName ),
+	m_iPreviousAccount( -1 ),
+	m_iPreviousDelta( 0 ),
+	m_pAccountIcon( NULL ),
+	m_pMinusIcon( NULL ),
+	m_pPlusIcon( NULL ),
+	m_clrRed( 255, 16, 16, 255 ),
+	m_clrGreen( 16, 255, 16, 255 ),
+	m_clrDeltaColor( 255, 255, 255, 255 ),
+	icon_xpos( 0.0f ),
+	icon_ypos( 0.0f ),
+	icon2_xpos( 0.0f ),
+	icon2_ypos( 0.0f ),
+	digit_xpos( 50.0f ),
+	digit_ypos( 2.0f ),
+	digit2_xpos( 0.0f ),
+	digit2_ypos( 0.0f ),
+	m_Ammo2Color( 0, 0, 0, 0 ),
+	m_TextColor( 255, 255, 255, 255 ),
+	m_hNumberFont( vgui::INVALID_FONT ),
+	m_flLastAnimationEnd( 0.0f ),
+	m_pszLastAnimationName( NULL ),
+	m_pszQueuedAnimationName( NULL ),
+	icon_tall( 0.0f ),
+	icon_wide( 0.0f )
 {
 	SetHiddenBits( HIDEHUD_PLAYERDEAD );
 	SetIndent( false ); // don't indent small numbers in the drawing code - we're doing it manually
@@ -41,6 +66,8 @@ void CHudBaseAccount::LevelInit( void )
 void CHudBaseAccount::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings(pScheme);
+	icon_tall = 0.0f;
+	icon_wide = 0.0f;
 
 	m_clrRed	= pScheme->GetColor( "HudIcon_Red", Color( 255, 16, 16, 255 ) );
 	m_clrGreen	= pScheme->GetColor( "HudIcon_Green", Color( 16, 255, 16, 255 ) );

@@ -1,123 +1,173 @@
 package com.valvesoftware;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.app.Activity;
-import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.graphics.Point;
-import android.os.Bundle;
-import android.view.Display;
-import java.util.HashMap;
-import java.io.File;
-import java.util.Locale;
-import org.libsdl.app.SDLActivity;
-import me.nillerusr.LauncherActivity;
-import android.content.SharedPreferences;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.util.Log;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import com.valvesoftware.source.R;
 import me.nillerusr.ExtractAssets;
+import me.nillerusr.LauncherActivity;
 
-public class ValveActivity2 { // not activity, i am lazy to change native methods
-	private static Activity mSingleton;
-	public static SharedPreferences mPref;
+public final class ValveActivity2 { // JNI bridge; intentionally not an Activity.
+	public static final String EXTRA_ARGS = "argv";
+	public static final String EXTRA_ENV = "env";
+	public static final String EXTRA_GAME_PATH = "gamepath";
+	private static final String EXTRA_BUNDLED_VPK_PATH = "bundled_vpk_path";
+	private static final String EXTRA_STARTUP_ERROR = "startup_error";
 
+	private static final String TAG = "SRCAPK";
+	private static final String DEFAULT_GAME_DIR = "csgo";
+
+	private ValveActivity2() {
+	}
 
 	public static native void setArgs(String args);
 	public static native int setenv(String name, String value, int overwrite);
-	private static native void nativeOnActivityResult(Activity activity, int i, int i2, Intent intent);
 
-	public static boolean findGameinfo(String path)
-	{
-		File dir = new File(path);
-		if( !dir.isDirectory() )
+	private static String getGameDirectory(Intent intent) {
+		String gameDirectory = intent.getStringExtra("gamedir");
+		return gameDirectory == null || gameDirectory.trim().isEmpty()
+			? DEFAULT_GAME_DIR : gameDirectory.trim();
+	}
+
+	/** Resolve either a selected content root or a directly selected csgo dir. */
+	static String resolveGameRoot(Context context, Intent intent) {
+		SharedPreferences preferences = context.getSharedPreferences("mod", 0);
+		String selected = intent.getStringExtra(EXTRA_GAME_PATH);
+		if (selected == null || selected.trim().isEmpty())
+			selected = preferences.getString(EXTRA_GAME_PATH,
+				LauncherActivity.getDefaultDir() + "/srceng");
+
+		String gameDirectory = getGameDirectory(intent);
+		File selectedFile = new File(selected.trim());
+		if (LauncherPaths.hasGameInfo(selectedFile) &&
+			selectedFile.getName().equalsIgnoreCase(gameDirectory)) {
+			intent.putExtra("gamedir", selectedFile.getName());
+		}
+
+		String resolved = LauncherPaths.resolveGameRoot(selected, gameDirectory);
+		intent.putExtra(EXTRA_GAME_PATH, resolved);
+		preferences.edit().putString(EXTRA_GAME_PATH, resolved).apply();
+		return resolved;
+	}
+
+	public static boolean preInit(Context context, Intent intent) {
+		intent.removeExtra(EXTRA_STARTUP_ERROR);
+		String gameRoot = resolveGameRoot(context, intent);
+		File modDirectory = new File(gameRoot, getGameDirectory(intent));
+		if (!LauncherPaths.hasGameInfo(modDirectory)) {
+			intent.putExtra(EXTRA_STARTUP_ERROR,
+				R.string.srceng_launcher_error_find_gameinfo);
 			return false;
+		}
+		return prepareBundledExtras(context, intent) != null;
+	}
 
-		for( File file : dir.listFiles() )
-		{
-			if( file.isDirectory() )
-			{
-				for( File f : file.listFiles() )
-				{
-					if( f.getName().toLowerCase().equals("gameinfo.txt") )
-						return true;
-				}
+	public static int getStartupErrorResource(Intent intent) {
+		return intent.getIntExtra(EXTRA_STARTUP_ERROR,
+			R.string.srceng_launcher_error_prepare_vpk);
+	}
+
+	private static File prepareBundledExtras(Context context, Intent intent) {
+		String preparedPath = intent.getStringExtra(EXTRA_BUNDLED_VPK_PATH);
+		if (preparedPath != null) {
+			File prepared = new File(preparedPath);
+			if (ExtractAssets.isValidVPK(prepared))
+				return prepared;
+		}
+
+		File extracted = ExtractAssets.extractVPK(context, false);
+		if (!ExtractAssets.isValidVPK(extracted)) {
+			intent.removeExtra(EXTRA_BUNDLED_VPK_PATH);
+			intent.putExtra(EXTRA_STARTUP_ERROR,
+				R.string.srceng_launcher_error_prepare_vpk);
+			return null;
+		}
+
+		intent.putExtra(EXTRA_BUNDLED_VPK_PATH,
+			LauncherPaths.canonicalPath(extracted));
+		return extracted;
+	}
+
+	private static String intentOrPreference(Intent intent, SharedPreferences preferences,
+		String key, String defaultValue) {
+		String value = intent.getStringExtra(key);
+		return value == null ? preferences.getString(key, defaultValue) : value;
+	}
+
+	private static void applyUserEnvironment(Intent intent, SharedPreferences preferences) {
+		String specification = intentOrPreference(intent, preferences, EXTRA_ENV,
+			"LIBGL_USEVBO=0");
+		try {
+			for (LauncherEnvironment.Assignment assignment : LauncherEnvironment.parse(specification)) {
+				setenv(assignment.name, assignment.value, 1);
+				Log.i(TAG, "Applied environment variable " + assignment.name);
 			}
+		} catch (IllegalArgumentException error) {
+			Log.e(TAG, "Invalid launcher environment: " + error.getMessage());
 		}
-
-		return false;
 	}
 
-	static public boolean isModGameinfoExists(String path)
-	{
-		File dir = new File(path);
-		if( !dir.isDirectory() )
-			return false;
+	private static void addExistingVPKs(List<String> output, String paths) {
+		if (paths == null || paths.trim().isEmpty())
+			return;
 
-		for( File file : dir.listFiles() )
-		{
-			if( file.isFile() && file.getName().toLowerCase().equals("gameinfo.txt") )
-				return true;
+		for (String path : paths.split(",")) {
+			File file = new File(path.trim());
+			if (file.isFile())
+				output.add(LauncherPaths.canonicalPath(file));
+			else
+				Log.w(TAG, "Ignoring missing VPK: " + path);
 		}
-
-		return false;
 	}
 
-	static public boolean preInit(Context context, Intent intent)
-	{
-		mPref = context.getSharedPreferences("mod", 0);
-		String gamepath = mPref.getString("gamepath", LauncherActivity.getDefaultDir() + "/srceng");
-		String gamedir = intent.getStringExtra("gamedir");
-		if( gamedir == null || gamedir.isEmpty() )
-			gamedir = "csgo";
+	private static String joinPaths(List<String> paths) {
+		StringBuilder joined = new StringBuilder();
+		for (String path : paths) {
+			if (joined.length() > 0)
+				joined.append(',');
+			joined.append(path);
+		}
+		return joined.toString();
+	}
 
-		if( !findGameinfo(gamepath) || !isModGameinfoExists(gamepath+"/"+gamedir) )
+	public static boolean initNatives(Context context, Intent intent) {
+		SharedPreferences preferences = context.getSharedPreferences("mod", 0);
+		ApplicationInfo applicationInfo = context.getApplicationInfo();
+		String gameRoot = resolveGameRoot(context, intent);
+		String gameDirectory = getGameDirectory(intent);
+		String arguments = intentOrPreference(intent, preferences, EXTRA_ARGS, "-console");
+		String gameLibraryDirectory = intent.getStringExtra("gamelibdir");
+		File bundledExtras = prepareBundledExtras(context, intent);
+		if (bundledExtras == null)
 			return false;
 
+		applyUserEnvironment(intent, preferences);
+		if (gameLibraryDirectory != null && !gameLibraryDirectory.trim().isEmpty())
+			setenv("APP_MOD_LIB", gameLibraryDirectory.trim(), 1);
+
+		List<String> vpkPaths = new ArrayList<String>();
+		addExistingVPKs(vpkPaths, intent.getStringExtra("vpk"));
+		vpkPaths.add(LauncherPaths.canonicalPath(bundledExtras));
+
+		String joinedVPKs = joinPaths(vpkPaths);
+		Log.i(TAG, "Extra VPK count=" + vpkPaths.size());
+		setenv("EXTRAS_VPK_PATH", joinedVPKs, 1);
+		setenv("LANG", Locale.getDefault().toString(), 1);
+		setenv("APP_DATA_PATH", applicationInfo.dataDir, 1);
+		setenv("APP_LIB_PATH", applicationInfo.nativeLibraryDir, 1);
+		setenv("VALVE_GAME_PATH", gameRoot, 1);
+
+		arguments = "-game " + gameDirectory + " " + arguments;
+		Log.i(TAG, "Launching game root=" + gameRoot + ", game=" + gameDirectory);
+		setArgs(arguments);
 		return true;
-	}
-
-	static public void initNatives(Context context, Intent intent) {
-		mPref = context.getSharedPreferences("mod", 0);
-		ApplicationInfo appinf = context.getApplicationInfo();
-		String gamepath = mPref.getString("gamepath", LauncherActivity.getDefaultDir() + "/srceng");
-
-		String argv = intent.getStringExtra("argv");
-		String gamedir = intent.getStringExtra("gamedir");
-		String gamelibdir = intent.getStringExtra("gamelibdir");
-		String customVPK = intent.getStringExtra("vpk");
-		Log.v("SRCAPK", "argv="+argv);
-
-		if( gamedir == null || gamedir.isEmpty() )
-			gamedir = "csgo";
-
-		if( argv == null || argv.isEmpty() )
-			argv = mPref.getString("argv", "-console");
-
-		argv = "-game "+gamedir+" "+argv;
-
-		if( gamelibdir != null && !gamelibdir.isEmpty() )
-			setenv( "APP_MOD_LIB", gamelibdir, 1 );
-
-		ExtractAssets.extractVPK(context, false);
-
-		String vpks = context.getFilesDir().getPath()+"/"+ExtractAssets.VPK_NAME;
-		if( customVPK != null && !customVPK.isEmpty() )
-			vpks = customVPK+","+vpks;
-
-		Log.v("SRCAPK", "vpks="+vpks);
-
-		setenv( "EXTRAS_VPK_PATH", vpks, 1 );
-		setenv( "LANG", Locale.getDefault().toString(), 1 );
-		setenv( "APP_DATA_PATH", appinf.dataDir, 1);
-		setenv( "APP_LIB_PATH", appinf.nativeLibraryDir, 1);
-
-		if (mPref.getBoolean("rodir", false))
-			setenv( "VALVE_GAME_PATH", LauncherActivity.getAndroidDataDir(), 1 );
-		else
-			setenv( "VALVE_GAME_PATH", gamepath, 1 );
-
-		Log.v("SRCAPK", "argv="+argv);
-		setArgs(argv);
 	}
 }

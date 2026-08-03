@@ -142,6 +142,7 @@ CPhysicsObject::~CPhysicsObject( void )
 		m_pObject->client_data = 0;
 
 		IVP_Core *pCore = m_pObject->get_core();
+		CPhysicsEnvironment *pVEnv = GetVPhysicsEnvironment();
 		if ( pCore->physical_unmoveable == IVP_TRUE && pCore->controllers_of_core.n_elems )
 		{
 			// go ahead and notify them if this happens in the real world
@@ -149,14 +150,13 @@ CPhysicsObject::~CPhysicsObject( void )
 			{
 				IVP_Controller *my_controller = pCore->controllers_of_core.element_at(i);
 				my_controller->core_is_going_to_be_deleted_event(pCore);
-				Assert(my_controller==pCore->environment->get_gravity_controller());
+				Assert( pVEnv && pVEnv->IsGravityController( my_controller ) );
 			}
 		}
 
 		// UNDONE: Don't free the surface manager here
 		// UNDONE: Remove reference to it by calling something in physics_collide
 		IVP_SurfaceManager *pSurman = GetSurfaceManager();
-		CPhysicsEnvironment *pVEnv = GetVPhysicsEnvironment();
 
 		// BUGBUG: Sometimes IVP will call a "revive" on the object we're deleting!
 		MEM_ALLOC_CREDIT();
@@ -378,7 +378,9 @@ bool CPhysicsObject::IsGravityEnabled() const
 {
 	if ( !IsStatic() )
 	{
-		return IsControlling( m_pObject->get_core()->environment->get_gravity_controller() );
+		const CPhysicsEnvironment *pEnvironment = GetVPhysicsEnvironment();
+		return IsControlling( pEnvironment->GetGravityController( false ) ) ||
+			IsControlling( pEnvironment->GetGravityController( true ) );
 	}
 
 	return false;
@@ -414,20 +416,35 @@ void CPhysicsObject::EnableGravity( bool enable )
 	if ( IsStatic() )
 		return;
 
+	CPhysicsEnvironment *pEnvironment = GetVPhysicsEnvironment();
+	IVP_Controller *pStandardGravity = pEnvironment->GetGravityController( false );
+	IVP_Controller *pAlternateGravity = pEnvironment->GetGravityController( true );
+	IVP_Core *pCore = m_pObject->get_core();
+	const bool bHasStandardGravity = IsControlling( pStandardGravity );
+	const bool bHasAlternateGravity = IsControlling( pAlternateGravity );
 
-	bool isEnabled = IsGravityEnabled();
-
-	if ( enable == isEnabled )
+	if ( !enable )
+	{
+		if ( bHasStandardGravity )
+		{
+			pCore->rem_core_controller( pStandardGravity );
+		}
+		if ( bHasAlternateGravity )
+		{
+			pCore->rem_core_controller( pAlternateGravity );
+		}
 		return;
-
-	IVP_Controller *pGravity = m_pObject->get_core()->environment->get_gravity_controller();
-	if ( enable )
-	{
-		m_pObject->get_core()->add_core_controller( pGravity );
 	}
-	else
+
+	IVP_Controller *pDesiredGravity = m_useAlternateGravity ? pAlternateGravity : pStandardGravity;
+	IVP_Controller *pOtherGravity = m_useAlternateGravity ? pStandardGravity : pAlternateGravity;
+	if ( IsControlling( pOtherGravity ) )
 	{
-		m_pObject->get_core()->rem_core_controller( pGravity );
+		pCore->rem_core_controller( pOtherGravity );
+	}
+	if ( !IsControlling( pDesiredGravity ) )
+	{
+		pCore->add_core_controller( pDesiredGravity );
 	}
 }
 
@@ -1299,12 +1316,21 @@ void CPhysicsObject::SetSphereRadius( float radius )
 	END_IVP_ALLOCATION();
 }
 
-// NOTE: the flag is recorded faithfully, but this vphysics applies gravity per
-// environment (IVP has no per-object gravity), so nothing consumes it yet.
-// Objects flagged here still fall under the environment gravity.
 void CPhysicsObject::SetUseAlternateGravity( bool bSet )
 {
+	if ( m_useAlternateGravity == bSet )
+		return;
+
+	const bool bGravityEnabled = IsGravityEnabled();
+	if ( bGravityEnabled )
+	{
+		EnableGravity( false );
+	}
 	m_useAlternateGravity = bSet;
+	if ( bGravityEnabled )
+	{
+		EnableGravity( true );
+	}
 }
 
 void CPhysicsObject::SetCollisionHints( uint32 collisionHints )
@@ -1731,6 +1757,7 @@ DEFINE_FIELD( isAsleep,			FIELD_BOOLEAN	),
 DEFINE_FIELD( isTrigger,			FIELD_BOOLEAN	),
 DEFINE_FIELD( asleepSinceCreation,	FIELD_BOOLEAN	),
 DEFINE_FIELD( hasTouchedDynamic,	FIELD_BOOLEAN	),
+DEFINE_FIELD( useAlternateGravity, FIELD_BOOLEAN ),
 DEFINE_CUSTOM_FIELD( materialIndex, &g_MaterialIndexDataOps ),
 DEFINE_FIELD( mass,				FIELD_FLOAT	),
 DEFINE_FIELD( rotInertia,			FIELD_VECTOR ),
@@ -1739,6 +1766,7 @@ DEFINE_FIELD( rotSpeedDamping,	FIELD_FLOAT	),
 DEFINE_FIELD( massCenterOverride,	FIELD_VECTOR ),
 DEFINE_FIELD( callbacks,			FIELD_INTEGER	),
 DEFINE_FIELD( gameFlags,			FIELD_INTEGER	),
+DEFINE_FIELD( collisionHints,		FIELD_INTEGER	),
 DEFINE_FIELD( contentsMask,		FIELD_INTEGER	),
 DEFINE_FIELD( volume,				FIELD_FLOAT	),
 DEFINE_FIELD( dragCoefficient,	FIELD_FLOAT	),
@@ -1792,6 +1820,8 @@ void CPhysicsObject::WriteToTemplate( vphysics_save_cphysicsobject_t &objectTemp
 
 	objectTemplate.callbacks = m_callbacks;
 	objectTemplate.gameFlags = m_gameFlags;
+	objectTemplate.collisionHints = m_collisionHints;
+	objectTemplate.useAlternateGravity = m_useAlternateGravity;
 	objectTemplate.volume = GetVolume();
 	objectTemplate.dragCoefficient = m_dragCoefficient;
 	objectTemplate.angDragCoefficient = m_angDragCoefficient;
@@ -1879,6 +1909,8 @@ void CPhysicsObject::InitFromTemplate( CPhysicsEnvironment *pEnvironment, void *
 	SetGameIndex( objectTemplate.gameIndex );
 	SetGameData( pGameData );
 	SetContents( objectTemplate.contentsMask );
+	SetCollisionHints( objectTemplate.collisionHints );
+	SetUseAlternateGravity( objectTemplate.useAlternateGravity );
 
 	if ( objectTemplate.dragEnabled )
 	{

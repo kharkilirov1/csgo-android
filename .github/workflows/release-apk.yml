@@ -1,25 +1,13 @@
-name: Release APK (arm64)
+name: Build APK (arm64)
 
-# Builds the arm64 engine, packages it into an APK and publishes it as a
-# GitHub release. Mirrors scripts/build-android-aarch64.sh and
-# scripts/build-apk-aarch64.sh.
-#
-# The APK contains the engine only - no game content ships with it.
+# Builds and validates an arm64 debug APK. It never creates tags or releases.
+# extras_dir.vpk is only the bootstrap payload; full CS:GO game data is absent.
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag"
-        required: true
-        default: "v0.1.0"
-      prerelease:
-        description: "Mark as prerelease"
-        type: boolean
-        default: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -31,6 +19,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Run source regression tests
+        run: |
+          python3 android/csgo-launcher/tests/check_launcher_integration.py
+          python3 unittests/core_runtime_source_checks.py
+
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
@@ -41,6 +34,8 @@ jobs:
       - name: Fetch NDK r20b
         run: |
           wget -q https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip -O ndk.zip
+          . scripts/android-aarch64-common.sh
+          printf '%s  %s\n' "$ANDROID_NDK_R20B_SHA256" ndk.zip | sha256sum -c -
           unzip -q ndk.zip
           rm ndk.zip
 
@@ -49,53 +44,33 @@ jobs:
           ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
           NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
         run: |
-          ./waf configure -T debug --android=aarch64,clang,28 --togles \
-            --build-games=csgo --disable-warns
-          # -k so the non-runtime targets (vtex_dll, ServerBrowser,
-          # video_services) don't abort the packaging step.
-          ./waf build -k -j$(nproc) || true
-
-      - name: Verify the runtime modules were produced
-        run: |
-          missing=0
-          for m in engine filesystem_stdio inputsystem vphysics materialsystem \
-                   datacache studiorender soundemittersystem vscript \
-                   vguimatsurface vgui2 scaleformui stdshader_dx9 launcher \
-                   client server; do
-            if ! find build -name "lib$m.so" | grep -q .; then
-              echo "::error::missing lib$m.so"
-              missing=1
-            fi
-          done
-          exit $missing
+          scripts/build-android-aarch64.sh
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
+      - name: Install Android SDK 35
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+
       - name: Package APK
         env:
           ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
           NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          CSGO_VERSION_CODE: ${{ github.run_number }}
+          CSGO_VERSION_NAME: 0.1.0-ci.${{ github.run_number }}
         run: |
-          chmod +x scripts/build-apk-aarch64.sh
           scripts/build-apk-aarch64.sh
 
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          APK=android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk
-          cp "$APK" "csgo-android-${{ inputs.tag }}-arm64.apk"
-          gh release create "${{ inputs.tag }}" \
-            "csgo-android-${{ inputs.tag }}-arm64.apk" \
-            --title "CS:GO Android ${{ inputs.tag }} (arm64)" \
-            --notes "Engine-only debug build for arm64-v8a.
+      - name: Record checksum
+        run: sha256sum android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk
 
-          Contains no game content: maps, models, materials and sounds must come
-          from a CS:GO installation. Built from \`${{ github.sha }}\`.
-
-          Untested on hardware." \
-            ${{ inputs.prerelease && '--prerelease' || '' }}
+      - name: Store debug APK as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: csgo-android-${{ github.sha }}-arm64-debug
+          path: android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

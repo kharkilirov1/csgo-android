@@ -68,30 +68,50 @@ class CPhysicsCollisionSet : public IPhysicsCollisionSet
 {
 public:
 	~CPhysicsCollisionSet() {}
-	CPhysicsCollisionSet()
+	CPhysicsCollisionSet() : m_maxElementCount( 0 )
 	{
 		memset( m_bits, 0, sizeof(m_bits) );
 	}
+	void Init( int maxElementCount )
+	{
+		m_maxElementCount = maxElementCount;
+	}
+	int GetMaxElementCount() const
+	{
+		return m_maxElementCount;
+	}
 	void EnableCollisions( int index0, int index1 )
 	{
-		Assert(index0<32&&index1<32);
-		m_bits[index0] |= 1<<index1;
-		m_bits[index1] |= 1<<index0;
+		if ( !ValidateIndices( index0, index1 ) )
+			return;
+		m_bits[index0] |= 1u << index1;
+		m_bits[index1] |= 1u << index0;
 	}
 	void DisableCollisions( int index0, int index1 )
 	{
-		Assert(index0<32&&index1<32);
-		m_bits[index0] &= ~(1<<index1);
-		m_bits[index1] &= ~(1<<index0);
+		if ( !ValidateIndices( index0, index1 ) )
+			return;
+		m_bits[index0] &= ~(1u << index1);
+		m_bits[index1] &= ~(1u << index0);
 	}
 
 	bool ShouldCollide( int index0, int index1 )
 	{
-		Assert(index0<32&&index1<32);
-		return (m_bits[index0] & (1<<index1)) ? true : false;
+		if ( !ValidateIndices( index0, index1 ) )
+			return false;
+		return (m_bits[index0] & (1u << index1)) ? true : false;
 	}
 private:
+	bool ValidateIndices( int index0, int index1 ) const
+	{
+		const bool bValid = index0 >= 0 && index0 < m_maxElementCount &&
+			index1 >= 0 && index1 < m_maxElementCount;
+		AssertMsg( bValid, "collision-set index is outside the configured element range" );
+		return bValid;
+	}
+
 	unsigned int m_bits[32];
+	int m_maxElementCount;
 };
 
 
@@ -177,19 +197,28 @@ void CPhysicsInterface::DestroyObjectPairHash( IPhysicsObjectPairHash *pHash )
 // client and server in single player.  So you can't have different client/server rules.
 IPhysicsCollisionSet *CPhysicsInterface::FindOrCreateCollisionSet( unsigned int id, int maxElementCount )
 {
-	if ( !m_pCollisionSetHash )
-	{
-		m_pCollisionSetHash = new IVP_VHash_Store(256);
-	}
 	Assert( id != 0 );
-	Assert( maxElementCount <= 32 );
-	if ( maxElementCount > 32 )
+	Assert( maxElementCount >= 0 && maxElementCount <= 32 );
+	if ( id == 0 || maxElementCount < 0 || maxElementCount > 32 )
 		return NULL;
 
 	IPhysicsCollisionSet *pSet = FindCollisionSet( id );
 	if ( pSet )
+	{
+		CPhysicsCollisionSet *pCollisionSet = static_cast<CPhysicsCollisionSet *>( pSet );
+		if ( pCollisionSet->GetMaxElementCount() != maxElementCount )
+		{
+			AssertMsg( false, "collision set reused with a different element count" );
+			return NULL;
+		}
 		return pSet;
+	}
+	if ( !m_pCollisionSetHash )
+	{
+		m_pCollisionSetHash = new IVP_VHash_Store(256);
+	}
 	intp index = m_collisionSets.AddToTail();
+	m_collisionSets[index].Init( maxElementCount );
 	m_pCollisionSetHash->add_elem( (void *)(intp)id, (void *)(intp)(index+1) );
 	return &m_collisionSets[index];
 }
@@ -239,4 +268,3 @@ void CPhysicsInterface::DestroyAllCollisionSets()
 // 	havana_constraints_lib_is_a_release_build = 0;
 // }
 // #endif
-

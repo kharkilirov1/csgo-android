@@ -50,7 +50,15 @@ private:
 DECLARE_HUDELEMENT( CHudArmor );
 
 
-CHudArmor::CHudArmor( const char *pName ) : CHudNumericDisplay( NULL, "HudArmor" ), CHudElement( pName ), m_pArmorIcon( NULL )
+CHudArmor::CHudArmor( const char *pName ) :
+	CHudElement( pName ),
+	CHudNumericDisplay( NULL, "HudArmor" ),
+	m_pArmorIcon( NULL ),
+	m_pArmor_HelmetIcon( NULL ),
+	icon_xpos( 0.0f ),
+	icon_ypos( 2.0f ),
+	icon_wide( 0.0f ),
+	icon_tall( 0.0f )
 {
 	SetHiddenBits( HIDEHUD_HEALTH | HIDEHUD_PLAYERDEAD );
 }
@@ -64,6 +72,8 @@ void CHudArmor::Init()
 void CHudArmor::ApplySchemeSettings( IScheme *scheme )
 {
 	BaseClass::ApplySchemeSettings( scheme );
+	icon_wide = 0.0f;
+	icon_tall = 0.0f;
 
 	if( !m_pArmorIcon )
 	{
@@ -124,4 +134,3 @@ void CHudArmor::Paint()
 		BaseClass::Paint();
 	}
 }
-

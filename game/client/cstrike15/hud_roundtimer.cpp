@@ -59,7 +59,22 @@ DECLARE_HUDELEMENT( CHudRoundTimer );
 
 
 CHudRoundTimer::CHudRoundTimer( const char *pName ) :
-	BaseClass( NULL, "HudRoundTimer" ), CHudElement( pName )
+	CHudElement( pName ),
+	BaseClass( NULL, "HudRoundTimer" ),
+	m_flToggleTime( 0.0f ),
+	m_flNextToggle( 0.0f ),
+	m_pTimerIcon( NULL ),
+	m_bFlash( false ),
+	m_iAdditiveWhiteID( -1 ),
+	m_FlashColor( 255, 255, 255, 255 ),
+	icon_xpos( 0.0f ),
+	icon_ypos( 0.0f ),
+	m_TextColor( 255, 255, 255, 255 ),
+	m_hNumberFont( vgui::INVALID_FONT ),
+	digit_xpos( 50.0f ),
+	digit_ypos( 2.0f ),
+	icon_tall( 0.0f ),
+	icon_wide( 0.0f )
 {
 	m_iAdditiveWhiteID = vgui::surface()->CreateNewTextureID();
 	vgui::surface()->DrawSetTextureFile( m_iAdditiveWhiteID, "vgui/white_additive" , true, false);
@@ -72,7 +87,11 @@ CHudRoundTimer::CHudRoundTimer( const char *pName ) :
 
 void CHudRoundTimer::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
+	BaseClass::ApplySchemeSettings( pScheme );
+
 	m_pTimerIcon = HudIcons().GetIcon( "timer_icon" );
+	icon_tall = 0.0f;
+	icon_wide = 0.0f;
 
 	if( m_pTimerIcon )
 	{
@@ -82,8 +101,6 @@ void CHudRoundTimer::ApplySchemeSettings(vgui::IScheme *pScheme)
 	}
 
 	SetFgColor( m_TextColor );
-
-	BaseClass::ApplySchemeSettings( pScheme );
 }
 
 bool CHudRoundTimer::ShouldDraw()
@@ -125,7 +142,7 @@ void CHudRoundTimer::Think()
 		return;
 	}
 
-	if(gpGlobals->curtime > m_flNextToggle)
+	if(gpGlobals->curtime >= m_flNextToggle)
 	{
 		if( timer <= 0)
 		{
@@ -179,7 +196,8 @@ void CHudRoundTimer::Think()
 		endValue = m_FlashColor;
 	}
 
-	float pos = (gpGlobals->curtime - m_flToggleTime) / (m_flNextToggle - m_flToggleTime);
+	const float flToggleDuration = m_flNextToggle - m_flToggleTime;
+	float pos = ( flToggleDuration > 0.0f ) ? ( gpGlobals->curtime - m_flToggleTime ) / flToggleDuration : 1.0f;
 	pos = clamp( SimpleSpline( pos ), 0, 1 );
 
 	interp_color[0] = ((endValue[0] - startValue[0]) * pos) + startValue[0];

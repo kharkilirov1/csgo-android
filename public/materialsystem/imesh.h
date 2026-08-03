@@ -1357,6 +1357,9 @@ inline void CVertexBuilder::FastQuadVertexSSE( const QuadTessVertex_t &vertex )
 {
 	Assert( m_CompressionType == VERTEX_COMPRESSION_NONE ); // FIXME: support compressed verts if needed
 	Assert( m_nCurrentVertex < m_nMaxVertexCount );
+	AssertMsg( m_VertexSize_Position >= static_cast<int>( sizeof( vertex ) ), "quad tessellation vertex does not fit the destination stride" );
+	if ( m_VertexSize_Position < static_cast<int>( sizeof( vertex ) ) )
+		return;
 
 #if defined( _WIN32 ) && !defined( _X360 ) && !defined( _M_X64 )
 	const void *pRead = &vertex;
@@ -1374,6 +1377,12 @@ inline void CVertexBuilder::FastQuadVertexSSE( const QuadTessVertex_t &vertex )
 		movntps [edi + 16], xmm1
 		movntps [edi + 32], xmm2
 	}
+#else
+	// The original fast path only emitted stores for 32-bit x86.  ARM64 (and
+	// every other target) must still write the vertex before advancing the
+	// stream pointer.  memcpy also avoids imposing SSE's alignment contract on
+	// architectures that do not use the assembly path.
+	memcpy( m_pCurrPosition, &vertex, sizeof( vertex ) );
 #endif
 
 	IncrementFloatPointer( m_pCurrPosition, m_VertexSize_Position );

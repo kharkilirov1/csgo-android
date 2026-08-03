@@ -2,6 +2,9 @@ plugins {
     id "com.android.application"
 }
 
+def buildVersionCode = providers.environmentVariable("CSGO_VERSION_CODE").orElse("1").get().toInteger()
+def buildVersionName = providers.environmentVariable("CSGO_VERSION_NAME").orElse("0.1.0-local").get()
+
 android {
     namespace "com.valvesoftware.source"
     compileSdk 35
@@ -10,8 +13,8 @@ android {
         applicationId "com.kharki.csgo"
         minSdk 28
         targetSdk 35
-        versionCode 1
-        versionName "0.1.0"
+        versionCode buildVersionCode
+        versionName buildVersionName
 
         ndk {
             abiFilters "arm64-v8a"

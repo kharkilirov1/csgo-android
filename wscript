@@ -74,6 +74,7 @@ projects={
 		'materialsystem/shaderlib',
 		'materialsystem/stdshaders',
 		'mathlib',
+		'matchmaking',
 			'particles',
 			'raytrace',
 			'resourcefile',

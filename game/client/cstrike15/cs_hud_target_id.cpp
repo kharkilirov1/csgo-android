@@ -61,14 +61,17 @@ using namespace vgui;
 // Purpose: 
 //-----------------------------------------------------------------------------
 CTargetID::CTargetID( const char *pElementName ) :
-	CHudElement( pElementName ), BaseClass( NULL, "TargetID" )
+	CHudElement( pElementName ),
+	BaseClass( NULL, "TargetID" ),
+	m_hFont( g_hFontTrebuchet24 ),
+	m_iLastEntIndex( 0 ),
+	m_flLastChangeTime( 0.0f ),
+	m_cCTColor( 255, 64, 64, 255 ),
+	m_cTerroristColor( 255, 64, 64, 255 ),
+	m_cHostageColor( 255, 160, 0, 255 )
 {
 	vgui::Panel *pParent = GetClientMode()->GetViewport();
 	SetParent( pParent );
-
-	m_hFont = g_hFontTrebuchet24;
-	m_flLastChangeTime = 0;
-	m_iLastEntIndex = 0;
 
 	SetHiddenBits( HIDEHUD_MISCSTATUS );
 }

@@ -13,6 +13,11 @@
     <string name="srceng_launcher_error_test_write">Test write failed, all files will be stored in </string>
     <string name="srceng_launcher_error_no_permission">Without permissions game won\'t work</string>
     <string name="srceng_launcher_error_find_gameinfo">Couldn\'t find game resources. Did you set the path correctly?</string>
+    <string name="srceng_launcher_error_prepare_vpk">Couldn\'t prepare the bundled launcher resources. Free some internal storage or reinstall the app, then try again.</string>
+    <string name="srceng_launcher_storage_access_title">Game files access</string>
+    <string name="srceng_launcher_storage_access_message">Android 11 and newer require all-files access so the native engine can read and update the selected CS:GO directory. The launcher does not upload game files.</string>
+    <string name="srceng_launcher_storage_access_grant">Open settings</string>
+    <string name="srceng_launcher_storage_access_denied">Game files access was not granted</string>
 
     <string name="srceng_launcher_command_args">Command-line arguments</string>
     <string name="srceng_launcher_env">Env</string>

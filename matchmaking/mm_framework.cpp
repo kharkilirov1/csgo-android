@@ -664,6 +664,16 @@ IMatchSession *CMatchFramework::GetMatchSession()
 	return m_pMatchSession;
 }
 
+#if !defined( _X360 ) && !defined( NO_STEAM ) && !defined( SWDS )
+static bool MM_HasSteamSessionServices()
+{
+	return steamapicontext &&
+		steamapicontext->SteamUser() &&
+		steamapicontext->SteamMatchmaking() &&
+		steamapicontext->SteamNetworking();
+}
+#endif
+
 void CMatchFramework::CreateSession( KeyValues *pSettings )
 {
 	DevMsg( "CreateSession: \n");
@@ -680,6 +690,15 @@ void CMatchFramework::CreateSession( KeyValues *pSettings )
 	//
 
 	char const *szNetwork = pSettings->GetString( "system/network", "offline" );
+
+#if !defined( _X360 ) && !defined( NO_STEAM ) && !defined( SWDS )
+	if ( Q_stricmp( "offline", szNetwork ) && !MM_HasSteamSessionServices() )
+	{
+		Warning( "CreateSession: Steam session services unavailable; forcing offline session.\n" );
+		pSettings->SetString( "system/network", "offline" );
+		szNetwork = "offline";
+	}
+#endif
 
 #ifdef _X360
 	if ( !Q_stricmp( "LIVE", szNetwork ) && !ValidateInviteControllers() )
@@ -719,6 +738,15 @@ void CMatchFramework::MatchSession( KeyValues *pSettings )
 
 	DevMsg( "MatchSession: \n");
 	KeyValuesDumpAsDevMsg( pSettings );
+
+#if !defined( _X360 ) && !defined( NO_STEAM ) && !defined( SWDS )
+	if ( !MM_HasSteamSessionServices() )
+	{
+		pSettings->SetString( "system/network", "offline" );
+		Warning( "MatchSession: Steam session services unavailable; online matchmaking disabled.\n" );
+		return;
+	}
+#endif
 
 	IMatchSessionInternal *pMatchSessionNew = NULL;
 
@@ -956,5 +984,4 @@ uint64 CMatchFramework::GetLastInviteFlags()
 {
 	return g_uiLastInviteFlags;
 }
-
 

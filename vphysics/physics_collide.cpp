@@ -1638,6 +1638,9 @@ void CPhysicsCollision::VCollideLoad( vcollide_t *pOutput, int solidCount, const
 // destroys the set of solids created by VCollideCreateCPhysCollide
 void CPhysicsCollision::VCollideUnload( vcollide_t *pVCollide )
 {
+	if ( !pVCollide )
+		return;
+
 	for ( int i = 0; i < pVCollide->solidCount; i++ )
 	{
 #if _DEBUG
@@ -1661,6 +1664,7 @@ void CPhysicsCollision::VCollideUnload( vcollide_t *pVCollide )
 	}
 	delete[] pVCollide->solids;
 	delete[] pVCollide->pKeyValues;
+	VCollideFreeUserData( pVCollide );
 	memset( pVCollide, 0, sizeof(*pVCollide) );
 }
 
@@ -1988,5 +1992,4 @@ void TestCubeVolume( void )
 	printf("Test volume %.4f\n", volume );
 }
 #endif
-
 

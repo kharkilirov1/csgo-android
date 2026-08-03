@@ -77,7 +77,16 @@ DECLARE_HUDELEMENT( CHudHealth );
 //-----------------------------------------------------------------------------
 // Purpose: Constructor
 //-----------------------------------------------------------------------------
-CHudHealth::CHudHealth( const char *pElementName ) : CHudElement( pElementName ), CHudNumericDisplay(NULL, "HudHealth"), m_pHealthIcon( NULL )
+CHudHealth::CHudHealth( const char *pElementName ) :
+	CHudElement( pElementName ),
+	CHudNumericDisplay( NULL, "HudHealth" ),
+	m_iHealth( 100 ),
+	m_bitsDamage( 0 ),
+	m_pHealthIcon( NULL ),
+	icon_xpos( 0.0f ),
+	icon_ypos( 0.0f ),
+	icon_tall( 0.0f ),
+	icon_wide( 0.0f )
 {
 	SetHiddenBits( HIDEHUD_HEALTH | HIDEHUD_PLAYERDEAD );
 }
@@ -98,6 +107,8 @@ void CHudHealth::Init()
 void CHudHealth::ApplySchemeSettings( IScheme *scheme )
 {
 	BaseClass::ApplySchemeSettings( scheme );
+	icon_tall = 0.0f;
+	icon_wide = 0.0f;
 
 	if( !m_pHealthIcon )
 	{

@@ -21,6 +21,7 @@ class IVP_Listener_Collision;
 class IVP_Listener_Constraint;
 class IVP_Listener_Object;
 class IVP_Controller;
+class IVP_Standard_Gravity_Controller;
 class CPhysicsFluidController;
 class CCollisionSolver;
 class CPhysicsObject;
@@ -117,6 +118,9 @@ public:
 	void		ClearDeadObjects( void );
 	IVP_Controller *GetDragController() { return m_pDragController; }
 	const IVP_Controller *GetDragController() const { return m_pDragController; }
+	IVP_Controller *GetGravityController( bool bAlternate );
+	const IVP_Controller *GetGravityController( bool bAlternate ) const;
+	bool IsGravityController( const IVP_Controller *pController ) const;
 	virtual void SetAirDensity( float density );
 	virtual float GetAirDensity( void ) const;
 	virtual void ResetSimulationClock( void );
@@ -161,6 +165,7 @@ public:
 private:
 	IVP_Environment					*m_pPhysEnv;
 	IVP_Controller					*m_pDragController;
+	IVP_Standard_Gravity_Controller	*m_pAlternateGravityController;
 	IVPhysicsDebugOverlay			*m_pDebugOverlay;			// Interface to use for drawing debug overlays.
 	CUtlVector<IPhysicsObject *>	m_objects;
 	CUtlVector<IPhysicsObject *>	m_deadObjects;

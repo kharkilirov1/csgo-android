@@ -36,6 +36,7 @@ struct vphysics_save_cphysicsobject_t
 	bool	asleepSinceCreation;		// has this been asleep since creation?
 	bool	hasTouchedDynamic;
 	bool	hasShadowController;
+	bool	useAlternateGravity;
 	short	collideType;
 	unsigned short	gameIndex;
 	int		hingeAxis;
@@ -48,6 +49,7 @@ struct vphysics_save_cphysicsobject_t
 
 	unsigned int	callbacks;
 	unsigned int	gameFlags;
+	uint32			collisionHints;
 
 	unsigned int	contentsMask;
 
