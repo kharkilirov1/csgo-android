@@ -6,7 +6,7 @@
 
 #include "cbase.h"
 #include <vgui_controls/Panel.h>
-#include <vgui/isurface.h>
+#include <vgui/ISurface.h>
 #include <vgui_controls/AnimationController.h>
 #include <vgui/ILocalize.h>
 #include "hud_base_account.h"
@@ -94,7 +94,13 @@ void CHudBaseAccount::Paint()
 		}
 
 		V_snwprintf( param1, ARRAYSIZE(param1), L"%d", weaponindex + 1 );
-		V_snwprintf( param2, ARRAYSIZE(param2), L"%d", engine->GetAchievementMgr()->GetNumProgressiveGunGameWeapons() );
+		// The weapon count comes from the game rules (which are already being
+		// queried just above) rather than the achievement manager: this
+		// branch's IAchievementMgr has no gun-game accessor, and the game rules
+		// version is per-team, which is what this readout wants anyway.
+		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+		int nTeamID = pLocalPlayer ? pLocalPlayer->GetTeamNumber() : 0;
+		V_snwprintf( param2, ARRAYSIZE(param2), L"%d", CSGameRules()->GetNumProgressiveGunGameWeapons( nTeamID ) );
 
 		g_pVGuiLocalize->ConstructString( unicode, sizeof( unicode ), pReason, 2, param1, param2 );
 
