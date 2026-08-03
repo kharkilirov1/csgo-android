@@ -92,6 +92,7 @@ projects={
 			'videocfg',
 		'localize',
 		'scaleformui',
+		'vscript',
 		'vgui2/matsys_controls',
 		'vgui2/src',
 		'vgui2/vgui_controls',

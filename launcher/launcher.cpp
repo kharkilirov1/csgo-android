@@ -753,16 +753,20 @@ bool CSourceAppSystemGroup::Create()
 		{ LAUNCHER_APPSYSTEM("soundsystem"),			SOUNDSYSTEM_INTERFACE_VERSION },
 #endif
 
-#if !defined( _GAMECONSOLE )
+// There is no valve_avi module in this tree - the Bink and QuickTime backends
+// need SDKs that aren't here, and BINK_VIDEO only gets defined as a side effect
+// of enabling the GL abstraction. Listing it here would make AddSystems() fail
+// and abort startup over video playback the build cannot do anyway.
+#if !defined( _GAMECONSOLE ) && !defined( POSIX )
     #if defined ( AVI_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			AVI_INTERFACE_VERSION },
-    #endif 		
+    #endif
     #if defined ( BINK_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			BIK_INTERFACE_VERSION },
  	#endif
-	#if defined( QUICKTIME_VIDEO ) 		
+	#if defined( QUICKTIME_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			QUICKTIME_INTERFACE_VERSION },
-    #endif		
+    #endif
 #elif defined( BINK_ENABLED_FOR_CONSOLE )
 		{ LAUNCHER_APPSYSTEM( "engine" ),				BIK_INTERFACE_VERSION },	
 #endif
