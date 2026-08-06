@@ -110,6 +110,7 @@ jobs:
           - Package: com.kharki.csgo
           - Includes the launcher/bootstrap payload, but no proprietary CS:GO game files
           - Explicitly requests an ES 3.2 context instead of exiting on SDL's ES 2.0 default
+          - Aligns the launcher with the ToGLES ARM64 entry-point ABI and GLES function set
 
           Built from commit ${RELEASE_TARGET}.
           NOTES

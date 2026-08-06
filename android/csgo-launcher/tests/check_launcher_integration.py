@@ -76,6 +76,43 @@ class LauncherIntegrationContractTest(unittest.TestCase):
             self.assertIn(attribute, init)
             self.assertLess(init.index(attribute), init.index("CreateHiddenGameWindow"))
 
+    def test_android_sdl_manager_uses_the_togles_entrypoint_abi(self):
+        router = self.read("public/togl/rendermechanism.h")
+        sdl_manager = self.read("appframework/sdlmgr.cpp")
+
+        self.assertLess(router.index("#ifdef TOGLES"), router.index("#ifndef RENDERMECHANISM_H"))
+        self.assertIn('#include "togles/rendermechanism.h"', router)
+
+        togles_callback = (
+            "void *VoidFnPtrLookup_GlMgr( const char *fn, bool &okay, "
+            "const bool bRequired, void *fallback)"
+        )
+        desktop_callback = (
+            "void *VoidFnPtrLookup_GlMgr( const char *libname, const char *fn, "
+            "bool &okay, const bool bRequired, void *fallback)"
+        )
+        self.assertIn("#if defined( TOGLES )\n" + togles_callback, sdl_manager)
+        self.assertIn("#else\n" + desktop_callback, sdl_manager)
+        self.assertIn("gGL->glGenFramebuffers(1, &m_readFBO);", sdl_manager)
+        self.assertIn("gGL->glDeleteFramebuffers(1, &m_readFBO);", sdl_manager)
+
+    def test_togles_core_entrypoints_match_gles_3_2(self):
+        entrypoints = self.read("public/togles/linuxwin/glfuncs.h")
+
+        for unsupported_entrypoint in (
+            "GL_FUNC_VOID(OpenGL,true,glAlphaFunc,",
+            "GL_FUNC_VOID(OpenGL,true,glClientActiveTexture,",
+            "GL_FUNC_VOID(OpenGL,true,glColor4f,",
+            "GL_FUNC_VOID(OpenGL,false,glFramebufferTexture3D,",
+            "GL_FUNC_VOID(OpenGL,false,glAlphaFuncQCOM,",
+        ):
+            self.assertNotIn(unsupported_entrypoint, entrypoints)
+
+        self.assertIn(
+            "GL_FUNC_VOID(GL_QCOM_alpha_test,false,glAlphaFuncQCOM,",
+            entrypoints,
+        )
+
     def test_selected_path_crosses_java_jni_and_filesystem_boundaries(self):
         activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")
         bridge = self.read("android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java")

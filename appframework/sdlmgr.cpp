@@ -118,7 +118,11 @@ void	CheckGLError( int line )
 //-----------------------------------------------------------------------------
 #if !defined( DEDICATED )
 
+#if defined( TOGLES )
+void *VoidFnPtrLookup_GlMgr( const char *fn, bool &okay, const bool bRequired, void *fallback)
+#else
 void *VoidFnPtrLookup_GlMgr( const char *libname, const char *fn, bool &okay, const bool bRequired, void *fallback)
+#endif
 {
 	void *retval = NULL;
 	if ((!okay) && (!bRequired))  // always look up if required (so we get a complete list of crucial missing symbols).
@@ -624,7 +628,13 @@ void CSDLMgr::Shutdown()
 #endif
 
 	if (gGL && m_readFBO)
+	{
+#if defined( TOGLES )
+		gGL->glDeleteFramebuffers(1, &m_readFBO);
+#else
 		gGL->glDeleteFramebuffersEXT(1, &m_readFBO);
+#endif
+	}
 	m_readFBO = 0;
 
 	DestroyGameWindow();
@@ -772,14 +782,19 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 	// !!! FIXME: note for later...we never delete this context anywhere, I think.
 	// !!! FIXME:  when we do get around to that, don't forget to delete/NULL gGL!
 
+#if defined( TOGLES )
+    static CDynamicFunctionOpenGL< true, const GLubyte *( APIENTRY *)(GLenum name), const GLubyte * > glGetString( "glGetString");
+#else
     static CDynamicFunctionOpenGL< true, const GLubyte *( APIENTRY *)(GLenum name), const GLubyte * > glGetString( NULL, "glGetString");
     static CDynamicFunctionOpenGL< true, GLvoid ( APIENTRY *)(GLenum pname, GLint *params), GLvoid > glGetIntegerv( NULL, "glGetIntegerv");
+#endif
 
 	const char *pszString = ( const char * )glGetString(GL_VENDOR);
 	pszString = ( const char * )glGetString(GL_RENDERER);
 	pszString = ( const char * )glGetString(GL_VERSION);
 	pszString = ( const char * )glGetString(GL_EXTENSIONS);
 
+#if !defined( TOGLES )
 	GLint whichProfile = 0;
 	glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &whichProfile);
 
@@ -794,6 +809,7 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 	{
 		Assert( V_strstr(pszString, "GL_ARB_debug_output") );
 	}
+#endif
 
 	gGL = GetOpenGLEntryPoints(VoidFnPtrLookup_GlMgr);
 
@@ -816,7 +832,11 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 		DebugPrintf("\n");
 	}
 
+#if defined( TOGLES )
+	gGL->glGenFramebuffers(1, &m_readFBO);
+#else
 	gGL->glGenFramebuffersEXT(1, &m_readFBO);
+#endif
 
 	gGL->glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
 	gGL->glScissor(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
