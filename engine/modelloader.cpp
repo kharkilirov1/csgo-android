@@ -5539,7 +5539,10 @@ static void GetSpriteInfo( const char *pName, bool bIsAVI, bool bIsBIK, int &nWi
 		}
 	}
 #if !defined( _GAMECONSOLE ) || defined( BINK_ENABLED_FOR_CONSOLE )
-	else if ( bIsBIK )
+	// bik may legitimately be absent (Android has no IBik implementation and
+	// engine connection tolerates that); a map referencing a bik material must
+	// degrade to no material rather than dereference NULL.
+	else if ( bIsBIK && bik )
 	{
 		hBIKMaterial = bik->CreateMaterial( pName, pName, "GAME" );
 		if (hBIKMaterial != BIKMATERIAL_INVALID )

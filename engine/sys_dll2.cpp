@@ -534,19 +534,31 @@ bool CEngineAPI::Connect( CreateInterfaceFn factory )
 	// Store off the app system factory...
 	g_AppSystemFactory = factory;
 
+	// Every early-out here used to be silent, which on Android turned into an
+	// undebuggable "failed during stage CONNECTION" with no cause in the log.
+	// Name the failing step so the on-device launcher.log identifies it.
 	if ( !BaseClass::Connect( factory ) )
+	{
+		Warning( "CEngineAPI::Connect: base app-system Connect failed.\n" );
 		return false;
+	}
 
 	g_pFileSystem = g_pFullFileSystem;
 	if ( !g_pFileSystem )
+	{
+		Warning( "CEngineAPI::Connect: no IFileSystem.\n" );
 		return false;
+	}
 
 #ifndef DBGFLAG_STRINGS_STRIP
 	g_pFileSystem->SetWarningFunc( Warning );
 #endif
 
 	if ( !Shader_Connect( true ) )
+	{
+		Warning( "CEngineAPI::Connect: Shader_Connect failed.\n" );
 		return false;
+	}
 
 	g_pPhysics = (IPhysics*)factory( VPHYSICS_INTERFACE_VERSION, NULL );
 
@@ -566,13 +578,28 @@ bool CEngineAPI::Connect( CreateInterfaceFn factory )
 	{
 		avi = (IAvi*)factory( AVI_INTERFACE_VERSION, NULL );
 		if ( !avi )
+		{
+			Warning( "CEngineAPI::Connect: no IAvi.\n" );
 			return false;
+		}
 	}
 
 #if ( !defined( _GAMECONSOLE ) || defined( BINK_ENABLED_FOR_CONSOLE ) ) && defined( BINK_VIDEO )
 	bik = (IBik*)factory( BIK_INTERFACE_VERSION, NULL );
 	if ( !bik )
+	{
+#if defined( ANDROID )
+		// Nothing in this tree implements IBik (there is no valve_avi module),
+		// so on Android this requirement can never be met - and it was failing
+		// engine connection before anything reached the screen. Video playback
+		// is simply unavailable; every runtime consumer of the bik pointer is
+		// null-checked.
+		Warning( "CEngineAPI::Connect: no IBik; continuing without video playback.\n" );
+#else
+		Warning( "CEngineAPI::Connect: no IBik.\n" );
 		return false;
+#endif
+	}
 #endif
 
 #ifdef _PS3
