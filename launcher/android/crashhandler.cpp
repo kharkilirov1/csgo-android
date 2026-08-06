@@ -41,7 +41,16 @@ struct backtrace_t
 	uintptr_t frames[MAX_FRAMES];
 };
 
-#define Log(msg) __android_log_print(ANDROID_LOG_DEBUG, "SRCENG", "%s", msg);
+// Crash output goes to logcat AND stderr. stderr is redirected into
+// VALVE_GAME_PATH/launcher.log at startup (see main.cpp), so the backtrace
+// reaches users who have no adb - write() straight to the fd because stdio
+// isn't async-signal-safe inside a crash handler.
+static void LogLine( const char *msg )
+{
+	__android_log_print( ANDROID_LOG_DEBUG, "SRCENG", "%s", msg );
+	write( STDERR_FILENO, msg, strlen( msg ) );
+}
+#define Log(msg) LogLine(msg);
 
 void printPC(void *pc)
 {

@@ -152,9 +152,40 @@ void android_property_print(const char *name)
 }
 
 
+// Mirror everything the engine prints to a file the user can actually reach.
+// Android has no visible stdout, logcat needs adb, and a black screen is
+// undebuggable for someone with only a file manager. The log lands in the game
+// directory the user picked (VALVE_GAME_PATH/launcher.log), overwritten on
+// every launch so it always describes the most recent run.
+static void RedirectOutputToLaunchLog( void )
+{
+	const char *gamePath = getenv( "VALVE_GAME_PATH" );
+	if ( !gamePath || !gamePath[0] )
+		return;
+
+	char logPath[1024];
+	snprintf( logPath, sizeof( logPath ), "%s/launcher.log", gamePath );
+
+	FILE *log = fopen( logPath, "w" );
+	if ( !log )
+		return;
+
+	// Unbuffered, so the tail survives a crash - that tail is usually the
+	// whole point of reading this file.
+	setvbuf( log, NULL, _IONBF, 0 );
+	dup2( fileno( log ), STDOUT_FILENO );
+	dup2( fileno( log ), STDERR_FILENO );
+	setvbuf( stdout, NULL, _IONBF, 0 );
+	setvbuf( stderr, NULL, _IONBF, 0 );
+	fclose( log ); // the dup'd descriptors keep the file open
+
+	Msg( "launcher.log: engine output for this run\n" );
+}
+
 DLL_EXPORT int LauncherMainAndroid( int argc, char **argv )
 {
 	InitCrashHandler();
+	RedirectOutputToLaunchLog();
 
 	Msg("GetTotalMemory() = %.2f \n", GetTotalMemory());
 
