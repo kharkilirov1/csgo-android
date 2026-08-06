@@ -51,7 +51,7 @@ public final class ExtractAssets {
 	 * filesystem. The returned path is a normal POSIX path that AddVPKFile can
 	 * open; content:// URIs cannot be consumed by the Source filesystem.
 	 */
-	public static File extractVPK(Context context, boolean force) {
+	public static synchronized File extractVPK(Context context, boolean force) {
 		SharedPreferences preferences = context.getSharedPreferences("mod", 0);
 		File destination = new File(context.getFilesDir(), VPK_NAME);
 		if (!force && isValidVPK(destination) &&

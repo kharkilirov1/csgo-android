@@ -612,6 +612,18 @@ CBaseModPanel::CBaseModPanel( const char *panelName ) : Panel(NULL, panelName )
 		m_bScaleformMainMenuEnabled = false;
 	}
 
+#if defined( __ANDROID__ )
+	// Autodesk GFx/Scaleform never shipped for Android/ARM64.  The Android
+	// scaleformui module is deliberately a no-op compatibility stub, so routing
+	// the front-end or pause menu through it leaves a running game behind a
+	// permanently blank screen.  Keep the (bypassed) start-screen state long
+	// enough for CompleteStartScreenSignIn() to open the native VGUI menu.
+	m_bScaleformMainMenuEnabled = false;
+	m_bScaleformPauseMenuEnabled = false;
+	if ( !CommandLine()->FindParm( "+map" ) )
+		m_bShowStartScreen = true;
+#endif
+
 	if ( GameUI().IsConsoleUI() )
 	{
 		m_pConsoleAnimationController = new AnimationController( this );
@@ -659,6 +671,13 @@ CBaseModPanel::CBaseModPanel( const char *panelName ) : Panel(NULL, panelName )
 
 	// start the menus fully transparent
 	SetMenuAlpha( 0 );
+
+#if defined( __ANDROID__ )
+	// The menu is visually hidden at this point.  Its original logical state is
+	// "shown", however, which makes the later VGUI fallback ShowMainMenu(true)
+	// return before restoring alpha/visibility.
+	m_bMainMenuShown = false;
+#endif
 
 	if ( GameUI().IsConsoleUI() )
 	{
@@ -2183,7 +2202,12 @@ void CBaseModPanel::OnGameUIActivated()
 				}
 				else
 				{
+				#if defined( __ANDROID__ )
+					// Android uses native VGUI because Scaleform is a no-op stub.
+					OnOpenPauseMenu();
+				#else
 					OnCommand( "OpenPauseMenu" );
+				#endif
 				}
 			}
 		}
@@ -5851,4 +5875,3 @@ bool CBaseModPanel::LoadingProgressWantsIsolatedRender( bool bContextValid )
 {
 	return CLoadingScreenScaleform::LoadingProgressWantsIsolatedRender( bContextValid );
 }
-

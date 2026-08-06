@@ -58,6 +58,9 @@ public class LauncherActivity extends Activity {
 	final static int PENDING_LAUNCH = 2;
 	private int pendingStorageAction = PENDING_NONE;
 	private boolean waitingForAllFilesAccess = false;
+	private boolean launchPreparationInProgress = false;
+	private boolean launcherResumed = false;
+	private Button launchButton;
 
 	public void applyPermissions( final String permissions[], final int code ) {
 		List<String> requestPermissions = new ArrayList<String>();
@@ -240,8 +243,8 @@ public class LauncherActivity extends Activity {
 			}
 		});*/
 
-		Button button = (Button)findViewById(R.id.button_launch);
-		button.setOnClickListener(new View.OnClickListener() {
+		launchButton = (Button)findViewById(R.id.button_launch);
+		launchButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				LauncherActivity.this.startSource(v);
 			}
@@ -338,9 +341,12 @@ public class LauncherActivity extends Activity {
 
 	private void startSourceWithAccess()
 	{
-		String gamepath = LauncherPaths.normalizeSelectedPath(GamePath.getText().toString());
-		String argv = cmdArgs.getText().toString();
-		String environment = EnvEdit.getText().toString();
+		if (launchPreparationInProgress)
+			return;
+
+		final String gamepath = LauncherPaths.normalizeSelectedPath(GamePath.getText().toString());
+		final String argv = cmdArgs.getText().toString();
+		final String environment = EnvEdit.getText().toString();
 
 		SharedPreferences.Editor editor = mPref.edit();
 		saveSettings(editor);
@@ -355,12 +361,64 @@ public class LauncherActivity extends Activity {
 
 		editor.commit();
 
-		Intent intent = new Intent(LauncherActivity.this, SDLActivity.class);
+		final Intent intent = new Intent(LauncherActivity.this, SDLActivity.class);
 		intent.putExtra(ValveActivity2.EXTRA_GAME_PATH, gamepath);
 		intent.putExtra(ValveActivity2.EXTRA_ARGS, argv);
 		intent.putExtra(ValveActivity2.EXTRA_ENV, environment);
 		intent.addFlags(268435456);
-		startActivity(intent);
+
+		// The bundled extras VPK is about 25 MiB.  Extracting and fsyncing it
+		// from SDLActivity.onCreate used to block Android's UI thread before a
+		// surface was even visible, which could trigger a first-launch ANR.
+		launchPreparationInProgress = true;
+		launchButton.setEnabled(false);
+		launchButton.setText(R.string.srceng_launcher_preparing);
+
+		Thread preparationThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				boolean prepared = false;
+				try {
+					prepared = ValveActivity2.preInit(
+						LauncherActivity.this.getApplicationContext(), intent);
+				} catch (Exception error) {
+					Log.e("SRCAPK", "Game preflight failed", error);
+				}
+
+				final boolean ready = prepared;
+				final int errorResource = ValveActivity2.getStartupErrorResource(intent);
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						if (isFinishing() ||
+							(Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()))
+							return;
+
+						launchPreparationInProgress = false;
+						launchButton.setEnabled(true);
+						launchButton.setText(R.string.srceng_launcher_launch);
+
+						// Do not unexpectedly open the game after the user has put the
+						// launcher in the background.  A later tap is cheap because the
+						// prepared VPK is already installed.
+						if (!launcherResumed)
+							return;
+
+						if (!ready) {
+							new AlertDialog.Builder(LauncherActivity.this)
+								.setTitle(R.string.srceng_launcher_error)
+								.setMessage(errorResource)
+								.setPositiveButton(R.string.srceng_launcher_ok, null)
+								.show();
+							return;
+						}
+
+						startActivity(intent);
+					}
+				});
+			}
+		}, "PrepareGameResources");
+		preparationThread.start();
 
 
 /*		if (can_write || rodir) {
@@ -397,6 +455,7 @@ public class LauncherActivity extends Activity {
 	protected void onResume()
 	{
 		super.onResume();
+		launcherResumed = true;
 		if (!waitingForAllFilesAccess)
 			return;
 
@@ -410,6 +469,7 @@ public class LauncherActivity extends Activity {
 	public void onPause()
 	{
 		Log.v("SRCAPK", "onPause");
+		launcherResumed = false;
 		saveSettings(mPref.edit());
 		super.onPause();
 	}

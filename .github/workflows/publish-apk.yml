@@ -111,6 +111,10 @@ jobs:
           - Includes the launcher/bootstrap payload, but no proprietary CS:GO game files
           - Explicitly requests an ES 3.2 context instead of exiting on SDL's ES 2.0 default
           - Aligns the launcher with the ToGLES ARM64 entry-point ABI and GLES function set
+          - Uses the native VGUI front-end on Android because the proprietary Scaleform runtime is unavailable
+          - Bypasses unavailable Scaleform loading callbacks so map commands and local sessions can continue
+          - Converts touch input to VGUI mouse clicks only while a menu cursor is visible
+          - Prepares bundled resources off the Android UI thread and bounds native shutdown waits
 
           Built from commit ${RELEASE_TARGET}.
           NOTES

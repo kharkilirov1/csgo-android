@@ -164,6 +164,37 @@ class LauncherIntegrationContractTest(unittest.TestCase):
         self.assertIn("init();", on_create)
         self.assertNotIn("WRITE_EXTERNAL_STORAGE", on_create)
 
+    def test_large_asset_preflight_runs_before_sdl_activity_on_a_worker(self):
+        activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")
+        launch = activity[activity.index("private void startSourceWithAccess()") :]
+        launch = launch[: launch.index("@Override\n\tprotected void onResume")]
+
+        worker = launch.index('new Thread(new Runnable()')
+        preflight = launch.index("ValveActivity2.preInit(")
+        start = launch.index("startActivity(intent)")
+        self.assertLess(worker, preflight)
+        self.assertLess(preflight, start)
+        self.assertIn('"PrepareGameResources"', launch)
+        self.assertIn("launchButton.setEnabled(false)", launch)
+        callback = launch[launch.index("runOnUiThread(new Runnable()") :]
+        self.assertLess(callback.index("isFinishing()"), callback.index("launchButton.setEnabled(true)"))
+        self.assertIn("if (!launcherResumed)", callback)
+
+        extractor = self.read("android/csgo-launcher/src/me/nillerusr/ExtractAssets.java")
+        self.assertIn("public static synchronized File extractVPK", extractor)
+
+    def test_sdl_shutdown_wait_is_bounded_and_fails_closed(self):
+        sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
+        destroy = sdl[sdl.index("protected void onDestroy()") :]
+        destroy = destroy[: destroy.index("public void onBackPressed()")]
+
+        self.assertIn("final Thread sdlThread = SDLActivity.mSDLThread", destroy)
+        self.assertIn("sdlThread.join(2000)", destroy)
+        self.assertNotIn("mSDLThread.join();", destroy)
+        self.assertIn("sdlThread.isAlive()", destroy)
+        self.assertIn("android.os.Process.killProcess", destroy)
+        self.assertLess(destroy.index("sdlThread.isAlive()"), destroy.index("nativeQuit()"))
+
     def test_sdl_runtime_permission_result_reaches_native_waiter(self):
         sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
         callback = sdl[sdl.index("public void onRequestPermissionsResult("):]

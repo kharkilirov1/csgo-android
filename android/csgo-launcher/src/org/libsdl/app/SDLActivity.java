@@ -533,16 +533,27 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
            return;
         }
 
-        if (SDLActivity.mSDLThread != null) {
+        final Thread sdlThread = SDLActivity.mSDLThread;
+        if (sdlThread != null) {
 
             // Send Quit event to "SDLThread" thread
             SDLActivity.nativeSendQuit();
 
-            // Wait for "SDLThread" thread to end
+            // Never wait forever on Android's main thread.  A native engine
+            // stuck during startup or rendering otherwise turns Back/finish
+            // into a guaranteed ANR.
             try {
-                SDLActivity.mSDLThread.join();
-            } catch(Exception e) {
+                sdlThread.join(2000);
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
                 Log.v(TAG, "Problem stopping SDLThread: " + e);
+            }
+
+            if (sdlThread.isAlive()) {
+                Log.w(TAG, "SDLThread did not stop within 2000 ms; terminating game process");
+                super.onDestroy();
+                android.os.Process.killProcess(android.os.Process.myPid());
+                return;
             }
         }
 

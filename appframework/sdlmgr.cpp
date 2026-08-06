@@ -326,6 +326,11 @@ private:
 	uint32_t m_keyModifiers;
 	uint32_t m_mouseButtons;
 
+#if defined( __ANDROID__ )
+	bool m_bTouchMouseActive;
+	SDL_FingerID m_TouchMouseFingerId;
+#endif
+
 	bool m_bGotMouseButtonDown;
 	Uint32 m_MouseButtonDownTimeStamp;
 	int m_MouseButtonDownX;
@@ -505,6 +510,11 @@ InitReturnVal_t CSDLMgr::Init()
 	m_keyModifiers = 0;
 	m_keyModifierMask = 0;
 	m_mouseButtons = 0;
+
+#if defined( __ANDROID__ )
+	m_bTouchMouseActive = false;
+	m_TouchMouseFingerId = 0;
+#endif
 
 	m_Window = NULL;
 	m_bFullScreen = false;
@@ -1589,6 +1599,90 @@ void CSDLMgr::PumpWindowsMessageLoop()
 
 		switch ( event.type )
 		{
+#if defined( __ANDROID__ )
+			case SDL_FINGERDOWN:
+			case SDL_FINGERUP:
+			case SDL_FINGERMOTION:
+			{
+				const bool bFingerDown = event.type == SDL_FINGERDOWN;
+				const bool bFingerUp = event.type == SDL_FINGERUP;
+				const bool bActiveFinger = m_bTouchMouseActive &&
+					event.tfinger.fingerId == m_TouchMouseFingerId;
+
+				// Finger events continue through TouchSDLWatcher for the in-game
+				// controls.  Only the first finger becomes a mouse while VGUI has
+				// made its cursor visible, preventing synthetic fire/look input in
+				// gameplay.
+				if ( !m_Window )
+				{
+					if ( bFingerUp && bActiveFinger )
+					{
+						m_bTouchMouseActive = false;
+						m_mouseButtons &= ~COCOABUTTON_LEFT;
+					}
+					break;
+				}
+
+				if ( bFingerDown )
+				{
+					if ( !m_bCursorVisible || !m_bHasFocus || m_bTouchMouseActive )
+						break;
+					m_bTouchMouseActive = true;
+					m_TouchMouseFingerId = event.tfinger.fingerId;
+				}
+				else if ( !bActiveFinger )
+				{
+					break;
+				}
+				else if ( !bFingerUp && ( !m_bCursorVisible || !m_bHasFocus ) )
+				{
+					break;
+				}
+
+				int windowWidth = 0;
+				int windowHeight = 0;
+				SDL_GetWindowSize( m_Window, &windowWidth, &windowHeight );
+				const int mouseX = clamp( (int)( event.tfinger.x * windowWidth ),
+					0, MAX( 0, windowWidth - 1 ) );
+				const int mouseY = clamp( (int)( event.tfinger.y * windowHeight ),
+					0, MAX( 0, windowHeight - 1 ) );
+
+				// Mouse-button Cocoa events do not update the cursor position in
+				// inputsystem.  Always locate a visible tap before pressing it.
+				if ( m_bCursorVisible && m_bHasFocus )
+				{
+					CCocoaEvent mouseMoveEvent;
+					mouseMoveEvent.m_EventType = CocoaEvent_MouseMove;
+					mouseMoveEvent.m_MousePos[0] = mouseX * m_flMouseXScale;
+					mouseMoveEvent.m_MousePos[1] = mouseY * m_flMouseYScale;
+					mouseMoveEvent.m_MouseButtonFlags = m_mouseButtons;
+					PostEvent( mouseMoveEvent );
+				}
+
+				if ( event.type != SDL_FINGERMOTION )
+				{
+					if ( bFingerDown )
+						m_mouseButtons |= COCOABUTTON_LEFT;
+					else
+						m_mouseButtons &= ~COCOABUTTON_LEFT;
+
+					CCocoaEvent mouseButtonEvent;
+					mouseButtonEvent.m_EventType = bFingerDown
+						? CocoaEvent_MouseButtonDown : CocoaEvent_MouseButtonUp;
+					mouseButtonEvent.m_MousePos[0] = mouseX * m_flMouseXScale;
+					mouseButtonEvent.m_MousePos[1] = mouseY * m_flMouseYScale;
+					mouseButtonEvent.m_MouseButtonFlags = m_mouseButtons;
+					mouseButtonEvent.m_nMouseClickCount = 1;
+					mouseButtonEvent.m_MouseButton = COCOABUTTON_LEFT;
+					PostEvent( mouseButtonEvent );
+				}
+
+				if ( bFingerUp )
+					m_bTouchMouseActive = false;
+				break;
+			}
+#endif
+
 			case SDL_MOUSEMOTION:
 			{
                 if( m_bHasFocus == false )
@@ -1752,6 +1846,20 @@ void CSDLMgr::PumpWindowsMessageLoop()
 					case SDL_WINDOWEVENT_FOCUS_LOST:
 					{
 						m_bHasFocus = false;
+
+#if defined( __ANDROID__ )
+						if ( m_bTouchMouseActive )
+						{
+							m_mouseButtons &= ~COCOABUTTON_LEFT;
+							CCocoaEvent mouseButtonUpEvent;
+							mouseButtonUpEvent.m_EventType = CocoaEvent_MouseButtonUp;
+							mouseButtonUpEvent.m_MouseButtonFlags = m_mouseButtons;
+							mouseButtonUpEvent.m_nMouseClickCount = 1;
+							mouseButtonUpEvent.m_MouseButton = COCOABUTTON_LEFT;
+							PostEvent( mouseButtonUpEvent );
+						}
+						m_bTouchMouseActive = false;
+#endif
 
 						SDL_SetWindowGrab( m_Window, SDL_FALSE );
 						SDL_SetRelativeMouseMode( SDL_FALSE );

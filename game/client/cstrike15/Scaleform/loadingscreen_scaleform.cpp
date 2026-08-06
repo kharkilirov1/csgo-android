@@ -177,6 +177,11 @@ void CLoadingScreenScaleform::PostUnloadFlash( void )
 void CLoadingScreenScaleform::LoadDialog( void )
 {
 	SFDevMsg( "CLoadingScreenScaleform::LoadDialog\n" );
+#if defined( __ANDROID__ )
+	// GFx is unavailable on Android.  Creating the compatibility-stub instance
+	// would leave m_readyForLoading false forever and trap pending map commands.
+	return;
+#endif
 	if ( !m_pInstance )
 	{
 		m_pInstance = new CLoadingScreenScaleform();
@@ -239,7 +244,12 @@ void CLoadingScreenScaleform::ReadyForLoading( SCALEFORM_CALLBACK_ARGS_DECL )
 }
 
 void CLoadingScreenScaleform::LoadDialogForCommand( const char* command )
-{	
+{
+#if defined( __ANDROID__ )
+	if ( command && command[0] )
+		engine->ClientCmd_Unrestricted( command );
+	return;
+#endif
 	LoadDialog();
 	if ( m_pInstance )
 	{
@@ -258,6 +268,17 @@ void CLoadingScreenScaleform::LoadDialogForCommand( const char* command )
 
 void CLoadingScreenScaleform::LoadDialogForKeyValues( KeyValues* keyValues )
 {
+#if defined( __ANDROID__ )
+	// This mirrors ReadyForLoading without waiting for an ActionScript callback
+	// that the Android Scaleform stub cannot deliver.
+	if ( keyValues && !engine->IsTransitioningToLoad() )
+	{
+		KeyValues *settingsCopy = keyValues->MakeCopy();
+		KeyValues::AutoDelete autoDeleteSettings( settingsCopy );
+		g_pMatchFramework->ApplySettings( settingsCopy );
+	}
+	return;
+#endif
 	LoadDialog();
 	if ( m_pInstance )
 	{
@@ -1112,13 +1133,20 @@ void CLoadingScreenScaleform::ShowContinueButton( void )
 	}
 }
 
+void ReadyToJoinGameProceedToMotdAndTeamSelect();
+
 void CLoadingScreenScaleform::FinishLoading( void )
 {
 	DevMsg( "CLoadingScreenScaleform::FinishLoading\n" );
+#if defined( __ANDROID__ )
+	// There is no Flash Continue button on Android, so proceed immediately.
+	ReadyToJoinGameProceedToMotdAndTeamSelect();
+#else
 	if ( m_pInstance )
 	{
 		m_pInstance->ShowContinueButton();
 	}
+#endif
 
 	bool bQueueMode = false;
 	if ( IMatchSession *pMatchSession = g_pMatchFramework->GetMatchSession() )

@@ -21,6 +21,114 @@ def source(relative_path: str) -> str:
 
 
 class CoreRuntimeSourceChecks(unittest.TestCase):
+    def test_android_routes_stubbed_scaleform_menus_to_vgui(self) -> None:
+        base = source("game/client/cstrike15/gameui/BasePanel.cpp")
+        constructor = base.split("CBaseModPanel::CBaseModPanel", 1)[1]
+        constructor = constructor.split("CBaseModPanel::~CBaseModPanel", 1)[0]
+        android = constructor.split("#if defined( __ANDROID__ )", 1)[1]
+        android = android.split("#endif", 1)[0]
+        self.assertIn("m_bScaleformMainMenuEnabled = false", android)
+        self.assertIn("m_bScaleformPauseMenuEnabled = false", android)
+        self.assertIn('CommandLine()->FindParm( "+map" )', android)
+        self.assertIn("m_bShowStartScreen = true", android)
+
+        after_alpha = constructor.split("SetMenuAlpha( 0 );", 1)[1]
+        after_alpha = after_alpha.split("#endif", 1)[0]
+        self.assertIn("m_bMainMenuShown = false", after_alpha)
+
+        cstrike = source(
+            "game/client/cstrike15/gameui/cstrike15/cstrike15basepanel.cpp"
+        )
+        dismiss_main = cstrike.split(
+            "void CCStrike15BasePanel::DismissMainMenuScreen", 1
+        )[1].split("void CCStrike15BasePanel::DismissAllMainMenuScreens", 1)[0]
+        restore_main = cstrike.split(
+            "void CCStrike15BasePanel::RestoreMainMenuScreen", 1
+        )[1].split("void CCStrike15BasePanel::RestoreMPGameMenu", 1)[0]
+        dismiss_pause = cstrike.split(
+            "void CCStrike15BasePanel::DismissPauseMenu", 1
+        )[1].split("void CCStrike15BasePanel::RestorePauseMenu", 1)[0]
+        restore_pause = cstrike.split(
+            "void CCStrike15BasePanel::RestorePauseMenu", 1
+        )[1].split("void CCStrike15BasePanel::ShowScaleformPauseMenu", 1)[0]
+        self.assertIn("CBaseModPanel::DismissMainMenuScreen", dismiss_main)
+        self.assertIn("CBaseModPanel::RestoreMainMenuScreen", restore_main)
+        self.assertIn("CBaseModPanel::DismissPauseMenu", dismiss_pause)
+        self.assertIn("CBaseModPanel::RestorePauseMenu", restore_pause)
+
+        intro = cstrike.split(
+            "void CCStrike15BasePanel::CheckIntroMovieStaticDependencies", 1
+        )[1].split("bool CCStrike15BasePanel::IsScaleformIntroMovieEnabled", 1)[0]
+        self.assertIn("#if defined( __ANDROID__ )", intro)
+        self.assertIn("m_bNeedToStartIntroMovie = false", intro)
+
+    def test_android_touch_becomes_mouse_only_for_visible_vgui_cursor(self) -> None:
+        sdl = source("appframework/sdlmgr.cpp")
+        pump = sdl.split("void CSDLMgr::PumpWindowsMessageLoop()", 1)[1]
+        pump = pump.split("void CSDLMgr::DestroyGameWindow", 1)[0]
+        finger = pump.split("case SDL_FINGERDOWN", 1)[1]
+        finger = finger.split("case SDL_MOUSEMOTION", 1)[0]
+
+        self.assertIn("case SDL_FINGERUP", finger)
+        self.assertIn("case SDL_FINGERMOTION", finger)
+        self.assertIn("!m_bCursorVisible", finger)
+        self.assertIn("CocoaEvent_MouseButtonDown", finger)
+        self.assertIn("CocoaEvent_MouseMove", finger)
+        self.assertIn("m_bTouchMouseActive", finger)
+        self.assertLess(
+            finger.index("PostEvent( mouseMoveEvent )"),
+            finger.index("PostEvent( mouseButtonEvent )"),
+        )
+        self.assertIn("!bFingerUp && ( !m_bCursorVisible", finger)
+
+        launcher = source("launcher/android/main.cpp")
+        self.assertIn('SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0")', launcher)
+
+    def test_android_bypasses_stubbed_scaleform_loading_callbacks(self) -> None:
+        loading = source(
+            "game/client/cstrike15/Scaleform/loadingscreen_scaleform.cpp"
+        )
+
+        load_dialog = loading.split(
+            "void CLoadingScreenScaleform::LoadDialog( void )", 1
+        )[1].split("void CLoadingScreenScaleform::UnloadDialog", 1)[0]
+        self.assertIn("#if defined( __ANDROID__ )", load_dialog)
+        self.assertLess(load_dialog.index("return;"), load_dialog.index("new CLoadingScreenScaleform"))
+
+        command = loading.split(
+            "void CLoadingScreenScaleform::LoadDialogForCommand", 1
+        )[1].split("void CLoadingScreenScaleform::LoadDialogForKeyValues", 1)[0]
+        self.assertIn("engine->ClientCmd_Unrestricted( command )", command)
+        self.assertIn("m_pInstance->SetPendingCommand( command )", command)
+
+        key_values = loading.split(
+            "void CLoadingScreenScaleform::LoadDialogForKeyValues", 1
+        )[1].split("void CLoadingScreenScaleform::SetPendingCommand", 1)[0]
+        self.assertIn("!engine->IsTransitioningToLoad()", key_values)
+        self.assertIn("keyValues->MakeCopy()", key_values)
+        self.assertIn("KeyValues::AutoDelete autoDeleteSettings( settingsCopy )", key_values)
+        self.assertIn("g_pMatchFramework->ApplySettings( settingsCopy )", key_values)
+        self.assertNotIn("g_pMatchFramework->ApplySettings( keyValues )", key_values)
+        self.assertIn("m_pInstance->SetPendingKeyValues( keyValues )", key_values)
+
+        finish = loading.split(
+            "void CLoadingScreenScaleform::FinishLoading", 1
+        )[1].split("void ReadyToJoinGameProceedToMotdAndTeamSelect()", 1)[0]
+        self.assertIn("ReadyToJoinGameProceedToMotdAndTeamSelect();", finish)
+        self.assertIn("m_pInstance->ShowContinueButton();", finish)
+
+        cstrike = source(
+            "game/client/cstrike15/gameui/cstrike15/cstrike15basepanel.cpp"
+        )
+        disconnect = cstrike.split(
+            "void CCStrike15BasePanel::OnOpenDisconnectConfirmationDialog", 1
+        )[1].split("void CCStrike15BasePanel::OnOpenQuitConfirmationDialog", 1)[0]
+        quit_dialog = cstrike.split(
+            "void CCStrike15BasePanel::OnOpenQuitConfirmationDialog", 1
+        )[1].split("bool CCStrike15BasePanel::OnMessageBoxEvent", 1)[0]
+        self.assertIn('RunMenuCommand( "DisconnectNoConfirm" )', disconnect)
+        self.assertIn("CBaseModPanel::OnOpenQuitConfirmationDialog", quit_dialog)
+
     def test_fast_quad_has_non_x86_copy(self) -> None:
         text = source("public/materialsystem/imesh.h")
         body = text.split("inline void CVertexBuilder::FastQuadVertexSSE", 1)[1]
