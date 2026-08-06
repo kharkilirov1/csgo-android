@@ -113,6 +113,15 @@ class LauncherIntegrationContractTest(unittest.TestCase):
             entrypoints,
         )
 
+    def test_togles_accepts_legacy_sampler_state_calls(self):
+        dxabstract = " ".join(
+            self.read("public/togles/linuxwin/dxabstract.h").split()
+        )
+        self.assertIn(
+            "DWORD MipFilter, DWORD MinLod = 0, float LodBias = 0.0f",
+            dxabstract,
+        )
+
     def test_selected_path_crosses_java_jni_and_filesystem_boundaries(self):
         activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")
         bridge = self.read("android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java")
