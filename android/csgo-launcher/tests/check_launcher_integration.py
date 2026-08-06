@@ -37,6 +37,14 @@ class LauncherIntegrationContractTest(unittest.TestCase):
                 "false", features[optional_hardware].attrib[ANDROID_NS + "required"]
             )
 
+        gles = next(
+            node
+            for node in manifest.findall("uses-feature")
+            if ANDROID_NS + "glEsVersion" in node.attrib
+        )
+        self.assertEqual("0x00030002", gles.attrib[ANDROID_NS + "glEsVersion"])
+        self.assertEqual("true", gles.attrib[ANDROID_NS + "required"])
+
         application = manifest.find("application")
         activities = {
             node.attrib[ANDROID_NS + "name"]: node
@@ -52,6 +60,21 @@ class LauncherIntegrationContractTest(unittest.TestCase):
             ANDROID_NS + "hardwareAccelerated",
             activities["org.libsdl.app.SDLActivity"].attrib,
         )
+
+    def test_android_requests_the_gles_version_required_by_togles(self):
+        sdl_manager = self.read("appframework/sdlmgr.cpp")
+        init = sdl_manager[sdl_manager.index("InitReturnVal_t CSDLMgr::Init()") :]
+        init = init[: init.index("bool CSDLMgr::Connect")]
+
+        profile = (
+            "SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, "
+            "SDL_GL_CONTEXT_PROFILE_ES);"
+        )
+        major = "SET_GL_ATTR(SDL_GL_CONTEXT_MAJOR_VERSION, 3);"
+        minor = "SET_GL_ATTR(SDL_GL_CONTEXT_MINOR_VERSION, 2);"
+        for attribute in (profile, major, minor):
+            self.assertIn(attribute, init)
+            self.assertLess(init.index(attribute), init.index("CreateHiddenGameWindow"))
 
     def test_selected_path_crosses_java_jni_and_filesystem_boundaries(self):
         activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")

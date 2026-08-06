@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - local/fix-all-gaps
-    paths:
-      - .github/workflows/publish-apk.yml
   workflow_dispatch:
 
 permissions:
@@ -99,19 +97,21 @@ jobs:
       - name: Publish GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: v0.1.0-arm64-preview.1
-          RELEASE_TARGET: eda95d7657e2b5ac4cbd36de34ba6cf97eab51f4
+          RELEASE_TAG: v0.1.0-arm64-preview.${{ github.run_number }}
+          RELEASE_TARGET: ${{ github.sha }}
         run: |
-          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          cat > "$RUNNER_TEMP/release-notes.md" <<NOTES
           ARM64 preview build of the CS:GO Android launcher and open-source engine.
 
           - Android 9 (API 28) or newer
           - ARM64-v8a devices only
+          - Requires OpenGL ES 3.2
           - Debug-signed APK
           - Package: com.kharki.csgo
           - Includes the launcher/bootstrap payload, but no proprietary CS:GO game files
+          - Explicitly requests an ES 3.2 context instead of exiting on SDL's ES 2.0 default
 
-          Built from commit eda95d7657e2b5ac4cbd36de34ba6cf97eab51f4.
+          Built from commit ${RELEASE_TARGET}.
           NOTES
 
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
@@ -124,7 +124,7 @@ jobs:
               "$RUNNER_TEMP/csgo-android-arm64-debug.apk" \
               "$RUNNER_TEMP/csgo-android-arm64-debug.apk.sha256" \
               --target "$RELEASE_TARGET" \
-              --title "CS:GO Android ARM64 Preview" \
+              --title "CS:GO Android ARM64 Preview ${GITHUB_RUN_NUMBER}" \
               --notes-file "$RUNNER_TEMP/release-notes.md" \
               --prerelease
           fi

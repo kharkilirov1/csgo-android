@@ -561,6 +561,17 @@ InitReturnVal_t CSDLMgr::Init()
 
 	SET_GL_ATTR(SDL_GL_ACCELERATED_VISUAL, 1);
 
+#if defined( TOGLES )
+	// SDL defaults to an OpenGL ES 2.0 context on Android, while ToGLES
+	// requires the entry points provided by OpenGL ES 3.2. Request the
+	// required context explicitly before SDL creates the hidden bootstrap
+	// window; otherwise capable devices still start with ES 2.0 and the
+	// renderer exits during its minimum-version check.
+	SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	SET_GL_ATTR(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SET_GL_ATTR(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#endif
+
 //	Disabled due to reports of failures on some Intel GPU's on Linux.
 //	SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 #undef SET_GL_ATTR
@@ -2134,4 +2145,3 @@ GLMDisplayDB *CSDLMgr::GetDisplayDB( void )
 
 // Turn off memdbg macros (turned on up top) since this is included like a header
 #include "tier0/memdbgoff.h"
-
