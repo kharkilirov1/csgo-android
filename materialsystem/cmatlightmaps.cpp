@@ -397,10 +397,13 @@ void CMatLightmaps::EndLightmapAllocation()
 //	m_NumLightmapPages += COUNT_DYNAMIC_LIGHTMAP_PAGES;
 	m_dynamic.Init();
 
-	// Compute the dimensions of the last lightmap 
-	int lastLightmapPageWidth, lastLightmapPageHeight;
+	// Compute the dimensions of the last lightmap
+	int lastLightmapPageWidth = 0, lastLightmapPageHeight = 0;
 	int nLastIdx = m_ImagePackers.Count();
-	m_ImagePackers[nLastIdx - 1].GetMinimumDimensions( &lastLightmapPageWidth, &lastLightmapPageHeight );
+	if ( nLastIdx > 0 )
+	{
+		m_ImagePackers[nLastIdx - 1].GetMinimumDimensions( &lastLightmapPageWidth, &lastLightmapPageHeight );
+	}
 	m_ImagePackers.Purge();
 
 	m_pLightmapPages = new LightmapPageInfo_t[GetNumLightmapPages()];

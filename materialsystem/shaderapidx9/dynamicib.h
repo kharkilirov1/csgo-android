@@ -1007,9 +1007,13 @@ inline void CIndexBuffer::HandleLateCreation( )
 			&pWritePtr,
 			dwFlags );
 
-	// If this fails we're about to crash. Consider skipping the update and leaving 
-	// m_pSysmemBuffer around to try again later. (For example in case of device loss)
-	Assert( SUCCEEDED( hr ) ); hr;
+	// A failed lock here used to memcpy into NULL (and togles returns S_OK
+	// even then). Keep m_pSysmemBuffer so a later frame can retry.
+	if ( FAILED( hr ) || !pWritePtr )
+	{
+		Warning( "CIndexBuffer::HandleLateCreation: lock failed\n" );
+		return;
+	}
 
 	memcpy( pWritePtr, m_pSysmemBuffer + m_nSysmemBufferStartBytes, dataToWriteBytes );
 	ReallyUnlock( dataToWriteBytes );

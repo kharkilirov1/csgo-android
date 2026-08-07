@@ -289,18 +289,23 @@ uint32 CVBRHeader::SeekPointByTimeVBRI(float fEntryTimeMS) const
 	if ( fEntryTimeMS > fLengthMS ) 
 		fEntryTimeMS = fLengthMS; 
 	 
-	while ( fAccumulatedTimeMS <= fEntryTimeMS )
+	while ( fAccumulatedTimeMS <= fEntryTimeMS && i < m_dwTableSize )
 	{
 		dwSeekPoint += m_pnToc[i++];
 		fAccumulatedTimeMS += fLengthMSPerTOCEntry;
 	}
-	  
+
 	// Searched too far; correct result
-	fraction = ( (int)(((( fAccumulatedTimeMS - fEntryTimeMS ) / fLengthMSPerTOCEntry ) 
+	fraction = ( (int)(((( fAccumulatedTimeMS - fEntryTimeMS ) / fLengthMSPerTOCEntry )
 				+ (1.0f/(2.0f*(float)m_dwFramesPerEntry))) * (float)m_dwFramesPerEntry));
 
-	dwSeekPoint -= (uint32)((float)m_pnToc[i-1] * (float)(fraction) 
-					/ (float)m_dwFramesPerEntry);
+	// i is unsigned: with an empty first loop pass, i-1 was 0xFFFFFFFF - a
+	// multi-GB out-of-bounds read on 64-bit (wrapped harmlessly on 32-bit).
+	if ( i > 0 )
+	{
+		dwSeekPoint -= (uint32)((float)m_pnToc[i-1] * (float)(fraction)
+						/ (float)m_dwFramesPerEntry);
+	}
 
 	return dwSeekPoint;
 }

@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -1220,10 +1220,10 @@ static void AccumulateBumpedLightstyles( ColorRGBExp32* RESTRICT pLightmap, unsi
 	*/
 	
 	// assert word (not vector) alignment
-	AssertMsg( ((reinterpret_cast<unsigned int>(pLightmap) & 0x03 ) == 0), "Lightmap was not word-aligned: AccumulateBumpedLightstyles must fail." );
+	AssertMsg( ((reinterpret_cast<uintp>(pLightmap) & 0x03 ) == 0), "Lightmap was not word-aligned: AccumulateBumpedLightstyles must fail." );
 	// assert vector alignment
-	AssertMsg( (reinterpret_cast<unsigned int>(blocklights) & 0x0F ) == 0, "Blocklights is not vector-aligned. You're doomed." );
-	AssertMsg( (reinterpret_cast<unsigned int>(blocklights) & 127 ) == 0, "Blocklights is not cache-aligned. Performance will suffer." );
+	AssertMsg( (reinterpret_cast<uintp>(blocklights) & 0x0F ) == 0, "Blocklights is not vector-aligned. You're doomed." );
+	AssertMsg( (reinterpret_cast<uintp>(blocklights) & 127 ) == 0, "Blocklights is not cache-aligned. Performance will suffer." );
 
 #if 0 // reference: This is the simple version -- four-way accumulate (no interleaving)
 	for (int i = 0 ; i < lightmapSize ; i+= 4)

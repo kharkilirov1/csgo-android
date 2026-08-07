@@ -1191,6 +1191,13 @@ bool GrabSourceMutex()
 	// Check TMPDIR environment variable for temp directory.
 	char *tmpdir = getenv( "TMPDIR" );
 
+#if defined( ANDROID )
+	// Android has no /tmp and TMPDIR may be unset; the app data dir is the
+	// writable place for the single-instance lock file.
+	if ( !tmpdir )
+		tmpdir = getenv( "APP_DATA_PATH" );
+#endif
+
 	// If it's NULL, or it doesn't exist, or it isn't a directory, fallback to /tmp.
 	struct stat buf;
 	if( !tmpdir || stat( tmpdir, &buf ) || !S_ISDIR ( buf.st_mode ) )

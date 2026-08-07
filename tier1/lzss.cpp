@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2007, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2007, Valve Corporation, All rights reserved. ============//
 //
 //	LZSS Codec. Designed for fast cheap gametime encoding/decoding. Compression results
 //	are	not aggresive as other alogrithms, but gets 2:1 on most arbitrary uncompressed data.
@@ -91,10 +91,11 @@ unsigned char *CLZSS::CompressNoAlloc( unsigned char *pInput, int inputLength, u
 		return NULL;
 	}
 
-	// create the compression work buffers, small enough (~64K) for stack
-	m_pHashTable = (lzss_list_t *)stackalloc( 256 * sizeof( lzss_list_t ) );
+	// create the compression work buffers; on LP64 the nodes are pointer-sized
+	// so this is ~100KB, too big for the ~1MB engine worker stacks
+	m_pHashTable = (lzss_list_t *)malloc( 256 * sizeof( lzss_list_t ) );
 	memset( m_pHashTable, 0, 256 * sizeof( lzss_list_t ) );
-	m_pHashTarget = (lzss_node_t *)stackalloc( m_nWindowSize * sizeof( lzss_node_t ) );
+	m_pHashTarget = (lzss_node_t *)malloc( m_nWindowSize * sizeof( lzss_node_t ) );
 	memset( m_pHashTarget, 0, m_nWindowSize * sizeof( lzss_node_t ) );
 
 	// allocate the output buffer, compressed buffer is expected to be less, caller will free
@@ -176,6 +177,8 @@ unsigned char *CLZSS::CompressNoAlloc( unsigned char *pInput, int inputLength, u
 		if ( pOutput >= pEnd )
 		{
 			// compression is worse, abandon
+			free( m_pHashTable ); m_pHashTable = NULL;
+			free( m_pHashTarget ); m_pHashTarget = NULL;
 			return NULL;
 		}
 	}
@@ -184,6 +187,8 @@ unsigned char *CLZSS::CompressNoAlloc( unsigned char *pInput, int inputLength, u
 	{
 		// unexpected failure
 		Assert( 0 );
+		free( m_pHashTable ); m_pHashTable = NULL;
+		free( m_pHashTarget ); m_pHashTarget = NULL;
 		return NULL;
 	}
 
@@ -205,6 +210,8 @@ unsigned char *CLZSS::CompressNoAlloc( unsigned char *pInput, int inputLength, u
 		*pOutputSize = pOutput - pStart;
 	}
 
+	free( m_pHashTable ); m_pHashTable = NULL;
+	free( m_pHashTarget ); m_pHashTarget = NULL;
 	return pStart;
 }
 

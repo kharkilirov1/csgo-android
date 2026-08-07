@@ -452,10 +452,13 @@ def build(bld):
 			idx = bld.get_taskgen_count()
 		)
 		includes += ['../external/crypto++-5.61']
+		# xboxsystem.cpp stays in: its PC-stub CXboxSystem provides
+		# XBOXSYSTEM_INTERFACE_VERSION, which server/client/gameui DLLInit all
+		# hard-require - without it startup dies right after Game.dll loads.
 		for android_excluded_source in [
 			'matchmakinghost.cpp', 'matchmakingqos.cpp', 'matchmakingclient.cpp',
 			'matchmakingshared.cpp', 'matchmakingmigrate.cpp', 'Session.cpp',
-			'sys_mainwind.cpp', 'xboxsystem.cpp', 'masterserver.cpp'
+			'sys_mainwind.cpp', 'masterserver.cpp'
 		]:
 			if android_excluded_source in source:
 				source.remove(android_excluded_source)

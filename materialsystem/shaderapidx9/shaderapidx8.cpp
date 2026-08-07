@@ -5208,11 +5208,11 @@ void CShaderAPIDx8::ForceHardwareSync_WithManagedTexture()
 
 	D3DLOCKED_RECT rect;
 	HRESULT hr = m_pFrameSyncTexture->LockRect( 0, &rect, NULL, 0 );
-	if ( SUCCEEDED( hr ) )
+	if ( SUCCEEDED( hr ) && rect.pBits )
 	{
 		// modify..
 		unsigned long *pData = (unsigned long*)rect.pBits;
-		(*pData)++; 
+		(*pData)++;
 
 		m_pFrameSyncTexture->UnlockRect( 0 );
 
@@ -15166,7 +15166,7 @@ void CShaderAPIDx8::CopyBitsFromHostSurface( IDirect3DSurface* pSurfaceBits,
 	HRESULT hr;
 	int flags = D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK;
 	hr = pSurfaceBits->LockRect( &lockedRect, &rect, flags );
-	if ( !FAILED( hr ) )
+	if ( !FAILED( hr ) && lockedRect.pBits )
 	{
 		unsigned char *pImage = (unsigned char *)lockedRect.pBits;
 		ShaderUtil()->ConvertImageFormat( (unsigned char *)pImage, srcFormat,

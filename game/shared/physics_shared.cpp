@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: Game & Client shared functions moved from physics.cpp
 //
@@ -513,14 +513,15 @@ void AddSurfacepropFile( const char *pFileName, IPhysicsSurfaceProps *pProps, IF
 	{
 		int len = pFileSystem->Size( file );
 
-		// read the file
+		// read the file (heap: file-sized stackalloc overflows the ~1MB
+		// engine worker stacks on Android)
 		int nBufSize = len+1;
-		char *buffer = (char *)stackalloc( nBufSize );
+		char *buffer = (char *)malloc( nBufSize );
 		pFileSystem->ReadEx( buffer, nBufSize, len, file );
 		pFileSystem->Close( file );
 		buffer[len] = 0;
 		pProps->ParseSurfaceData( pFileName, buffer );
-		// buffer is on the stack, no need to free
+		free( buffer );
 	}
 	else
 	{

@@ -2340,8 +2340,8 @@ void CBasePanel::RunMenuCommand(const char *command)
 			if ( fp )
 			{
 				fprintf( fp, "%s\n", szSteamURL );
+				fclose( fp );
 			}
-			fclose( fp );
 #elif defined( _X360 )
 #else
 #error

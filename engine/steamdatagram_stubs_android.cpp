@@ -47,8 +47,8 @@ int ISteamDatagramTransportClient::ConnectionStatus::Print( char *pszBuf, int cb
 	return 0;
 }
 
-// Xbox system services are absent on Android; consumers are IsX360()-guarded.
-IXboxSystem *g_pXboxSystem = NULL;
+// g_pXboxSystem comes from xboxsystem.cpp (the PC-stub CXboxSystem), which
+// server/client/gameui DLLInit all hard-require.
 
 InputContextHandle_t GetGameInputContext()
 {

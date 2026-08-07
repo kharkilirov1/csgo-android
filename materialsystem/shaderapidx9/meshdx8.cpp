@@ -1692,7 +1692,8 @@ bool CIndexBufferDx8::Lock( int nMaxIndexCount, bool bAppend, IndexDesc_t &desc 
 	pLockedData = ( ( unsigned char * )pLockedData + m_nFirstUnwrittenOffset );
 #endif
 
-	if ( FAILED( hr ) )
+	// togles returns S_OK from Lock even when the mapping failed
+	if ( FAILED( hr ) || !pLockedData )
 	{
 		FailedLock( "Failed to lock index buffer in CIndexBufferDx8::LockIndexBuffer\n" );
 		goto indexBufferLockFailed;
@@ -2111,7 +2112,8 @@ bool CVertexBufferDx8::Lock( int nMaxVertexCount, bool bAppend, VertexDesc_t &de
 	pLockedData = (unsigned char*)pLockedData + m_nFirstUnwrittenOffset;
 #endif
 
-	if ( FAILED( hr ) )
+	// togles returns S_OK from Lock even when the mapping failed
+	if ( FAILED( hr ) || !pLockedData )
 	{
 		// Check if paged pool is in critical state ( < 5% free )
 		PAGED_POOL_INFO_t ppi;
@@ -3150,6 +3152,12 @@ void CMeshDX8::ModifyBeginEx( bool bReadOnly, int nFirstVertex, int nVertexCount
 		m_LockVertexBufferSize = nVertexCount * desc.m_ActualVertexSize;
 		m_LockVertexBuffer = pVertexMemory;
 #endif
+	}
+	else
+	{
+		// A failed Modify used to leave the vertex half of desc as stack
+		// garbage - wild writes. Point every field at the dummy instead.
+		g_MeshMgr.ComputeVertexDescription( 0, 0, desc );
 	}
 
 	desc.m_nFirstVertex = nFirstVertex;
@@ -5961,6 +5969,12 @@ void CMeshMgr::CopyStaticMeshIndexBufferToTempMeshIndexBuffer( CTempMeshDX8 *pDs
 	CIndexBuffer *srcIndexBuffer = pSrcIndexMesh->GetIndexBuffer();
 	int dummy = 0;
 	unsigned short *srcIndexArray = srcIndexBuffer->Lock( false, nIndexCount, dummy, 0 );
+	if ( !srcIndexArray )
+	{
+		Warning( "CopyStaticMeshIndexBufferToTempMeshIndexBuffer: lock failed\n" );
+		dstMeshBuilder.End();
+		return;
+	}
 	int i;
 	for( i = 0; i < nIndexCount; i++ )
 	{

@@ -3758,11 +3758,9 @@ void V_qsort_s( void *base, size_t num, size_t width, int ( __cdecl *compare )(v
 #if defined OSX
 	// the arguments are swapped 'round on the mac - awesome, huh?
 	return qsort_r( base, num, width, context, compare );
-#elif defined LINUX
-	// FIXME: still not finding qsort_s, even though it's defined in qsort_s.cpp
-	// What's up with that?
-	return;
 #else
+	// (the LINUX arm used to silently return without sorting; qsort_s.cpp is
+	// in the tier1 build and links fine)
 	return qsort_s( base, num, width, compare, context );
 #endif
 }
