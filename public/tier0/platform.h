@@ -1841,7 +1841,12 @@ inline uint64 Plat_Rdtsc()
 		__asm__ __volatile__ ( "rdtsc" : "=a" (lo), "=d" (hi));
 		return ( ( ( uint64 )hi ) << 32 ) | lo;
 	#elif defined( __aarch64__ )
-		return __builtin_readcyclecounter();
+		// __builtin_readcyclecounter() reads pmccntr_el0; userspace PMU access
+		// is disabled on Android/Linux, so it SIGILLs on first use. The generic
+		// timer counter is always EL0-readable.
+		uint64 val;
+		__asm__ __volatile__ ( "mrs %0, cntvct_el0" : "=r" (val) );
+		return val;
 	#else
 #error
 #endif
