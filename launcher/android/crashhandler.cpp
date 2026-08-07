@@ -101,33 +101,42 @@ _Unwind_Reason_Code UnwindBacktraceCallback(struct _Unwind_Context* unwind_conte
 
 static void CrashHandler( int sig, siginfo_t *si, void *uc)
 {
-	static char message[4096], symbol[256];
-	int len, line, logfd, i = 0;
-
+	static char message[4096];
 
 	const ucontext_t* signal_ucontext = (ucontext_t*)uc;
 	const mcontext_t* signal_mcontext = &(signal_ucontext->uc_mcontext);
+
+	// Print the header and the raw register state BEFORE attempting any stack
+	// unwinding: a nested fault inside the unwinder kills the process on the
+	// spot (the signal is blocked while the handler runs), so anything printed
+	// after the unwind can be lost. pc/lr alone are enough to locate a crash.
+	Log(">>> crash report begin\n");
+
+	snprintf(message, sizeof(message), "Signal=%d, errno=%d, code=%d, addr=0x%" PRIXPTR "\n", sig, si->si_errno, si->si_code, (uintptr_t)si->si_addr);
+	Log(message);
+
 #ifdef __aarch64__
+	snprintf(message, sizeof(message), "pc=0x%" PRIXPTR " lr=0x%" PRIXPTR " sp=0x%" PRIXPTR " fault=0x%" PRIXPTR "\n",
+		(uintptr_t)signal_mcontext->pc, (uintptr_t)signal_mcontext->regs[30],
+		(uintptr_t)signal_mcontext->sp, (uintptr_t)signal_mcontext->fault_address);
+	Log(message);
+	Log("pc: ");
+	printPC( (void*)signal_mcontext->pc );
+	Log("lr: ");
+	printPC( (void*)signal_mcontext->regs[30] );
+
 	// Doesn't work good on armv7a
 	static backtrace_t bt;
 	bt.count = 0;
 
 	_Unwind_Backtrace(UnwindBacktraceCallback, &bt);
 
-	Log(">>> crash report begin\n");
-
-	snprintf(message, sizeof(message), "Signal=%d, errno=%d, code=%d, addr=0x%" PRIXPTR "\n", sig, si->si_errno, si->si_code, (uintptr_t)si->si_addr);
-	Log(message);
-
 	for( int i = 0; i < bt.count; i++ )
 	{
 		printPC( (void*)bt.frames[i] );
 	}
 #else
-	Log(">>> crash report begin\n");
-
-	snprintf(message, sizeof(message), "Signal=%d, errno=%d, code=%d, addr=0x%" PRIXPTR "\n", sig, si->si_errno, si->si_code, (uintptr_t)si->si_addr);
-	Log(message);
+	(void)signal_mcontext;
 
 	// Initialize unw_context and unw_cursor.
 	unw_context_t unw_context = {};

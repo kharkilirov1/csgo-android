@@ -5438,7 +5438,6 @@ void CMeshMgr::FillPreTessPatchIB( CIndexBuffer* pIndexBuffer, int iSubdivLevel,
 		return;
 
     unsigned short iVertIndex = 0;
-    UINT iIndex = 0;
     for( int v = 0; v < iSubdivLevel; v++ )
     {
         iVertIndex = ( unsigned short )( ( iSubdivLevel + 1 ) * ( iSubdivLevel - v ) );
@@ -5452,8 +5451,10 @@ void CMeshMgr::FillPreTessPatchIB( CIndexBuffer* pIndexBuffer, int iSubdivLevel,
         }
         if( v != iSubdivLevel - 1 )
         {
-            // add a degenerate tri for stripping
-            *pIndices = pIndices[iIndex - 1];
+            // add a degenerate tri for stripping: repeat the previous index.
+            // (was pIndices[iIndex - 1] with unsigned iIndex == 0 - an 8GB
+            // out-of-bounds read that only "worked" on 32-bit via pointer wrap)
+            *pIndices = pIndices[-1];
             pIndices ++;
             *pIndices = ( unsigned short )( ( iSubdivLevel + 1 ) * ( iSubdivLevel - ( v + 1 ) ) );
             pIndices ++;
@@ -5579,6 +5580,7 @@ void CMeshMgr::CreatePreTessPatchIndexBuffers()
 		{
 			int iSubdivLevel = i + 1;
 			int nIndexCount = GetNumIndicesForSubdivisionLevel( iSubdivLevel );
+			Msg( "MeshMgr::Init: pre-tess IB %d (n=%d)\n", i, nIndexCount );
 			m_pPreTessPatchIndexBuffer[i] = new CIndexBuffer( Dx9Device(), nIndexCount, ShaderAPI()->UsingSoftwareVertexProcessing(), false );
 
 			FillPreTessPatchIB( m_pPreTessPatchIndexBuffer[i], iSubdivLevel, nIndexCount );
@@ -5607,6 +5609,7 @@ void CMeshMgr::CreatePreTessPatchVertexBuffers()
 			int nVertexCount = iSubdivLevel + 1;
 			nVertexCount *= nVertexCount;
 
+			Msg( "MeshMgr::Init: pre-tess VB %d (n=%d)\n", i, nVertexCount );
 			m_pPreTessPatchVertexBuffer[i] = new CVertexBuffer( Dx9Device(), 0, 0, sizeof( PreTessPatchVertex_t ),
 				nVertexCount, TEXTURE_GROUP_STATIC_VERTEX_BUFFER_OTHER, ShaderAPI()->UsingSoftwareVertexProcessing() );
 
