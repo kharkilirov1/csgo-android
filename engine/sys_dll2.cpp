@@ -2088,7 +2088,18 @@ void Sys_Version( bool bDedicated )
 
 	if ( !ParseSteamInfFile( "steam.inf", g_unSteamAppID ) )
 	{
+#if defined( ANDROID )
+		// The Android build is not launched through Steam and the game content
+		// may ship without a (complete) steam.inf. The version/product strings
+		// were already defaulted above (VERSION_STRING/PRODUCT_STRING), and every
+		// consumer of the AppID falls back to the CS:GO id (730) when it is left
+		// invalid - see baseserver.cpp. So warn and continue instead of killing
+		// startup at the first rendered frame.
+		Warning( "Sys_Version: no usable steam.inf; continuing with default version %s (appid left unresolved).\n",
+			g_sVersionString.String() );
+#else
 		Sys_Error( "Unable to load version from steam.inf" );
+#endif
 	}
 
 	// if we aren't launched by Steam try reading a local perforce inf file
