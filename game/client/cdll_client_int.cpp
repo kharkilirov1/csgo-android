@@ -1423,12 +1423,21 @@ int CHLClient::Connect( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGl
 		!ClientSteamContext().SteamUser()->GetSteamID().IsValid()	// << this is catching the case when Steam client is running, but showing logon username/password screen
 		)
 	{
+#if defined( ANDROID )
+		// The Android build links the stub steam_api, so none of these Steam
+		// interfaces exist and there is no logged-in Steam user. Exiting here is
+		// what killed client startup after the engine cleared its own Steam gate.
+		// Continue without Steam services; consumers of ClientSteamContext() are
+		// null-checked, and offline/bot play does not require a Steam identity.
+		Warning( "ClientSteamContext not connected (stub steam_api); continuing without Steam services.\n" );
+#else
 		fprintf( stderr, "FATAL ERROR: This game requires latest version of Steam to be running!\nYour Steam Client can be updated using Steam > Check for Steam Client Updates...\n" );
 #if IS_WINDOWS_PC || ( defined ( LINUX ) && !defined ( DEDICATED ) )
 		Error( "FATAL ERROR: Failed to connect with local Steam Client process!\n\nPlease make sure that you are running latest version of Steam Client.\nYou can check for Steam Client updates using Steam main menu:\n             Steam > Check for Steam Client Updates..." );
 #endif
 		Plat_ExitProcess( 100 );
 		return false;
+#endif
 	}
 
 #endif

@@ -827,8 +827,18 @@ bool CEngineAPI::SetStartupInfo( StartupInfo_t &info )
 	if ( !Steam3Client().IsInitialized() || !Steam3Client().SteamUser() ||
 		!Steam3Client().SteamUser()->GetSteamID().IsValid() || !Steam3Client().SteamUser()->GetSteamID().BIndividualAccount() || !Steam3Client().SteamUser()->GetSteamID().GetAccountID() )
 	{
+#if defined( ANDROID )
+		// The Android build links the stub steam_api (stub_steam/steam_api.cpp):
+		// there is no local Steam client, so the Steam3 context never initializes
+		// and SteamUser() is null by design. Requiring a live Steam login here is
+		// what put the "Failed to connect with local Steam Client process" dialog
+		// on screen. Continue without a Steam identity - offline/bot play does not
+		// need one, and every consumer of SteamUser() below is null-checked.
+		Warning( "Steam3Client not connected (stub steam_api); continuing without a Steam identity.\n" );
+#else
 		Error( "FATAL ERROR: Failed to connect with local Steam Client process!\n\nPlease make sure that you are running latest version of Steam Client.\nYou can check for Steam Client updates using Steam main menu:\n             Steam > Check for Steam Client Updates..." );
 		return false;
+#endif
 	}
 
 	//
@@ -842,7 +852,7 @@ bool CEngineAPI::SetStartupInfo( StartupInfo_t &info )
 			Msg( "USRLOCAL path using environment setting '%s':\n%s\n", "USRLOCAL" DLLExtTokenPaste2( VPCGAMECAPS ), pszLocalOverride );
 			g_pFileSystem->AddSearchPath( pszLocalOverride, "USRLOCAL" );
 		}
-		else if ( Steam3Client().SteamUser()->GetUserDataFolder( chUserLocalDataFolder, sizeof( chUserLocalDataFolder ) ) )
+		else if ( Steam3Client().SteamUser() && Steam3Client().SteamUser()->GetUserDataFolder( chUserLocalDataFolder, sizeof( chUserLocalDataFolder ) ) )
 		{
 			Msg( "USRLOCAL path using Steam profile data folder:\n%s\n", chUserLocalDataFolder );
 			g_pFileSystem->AddSearchPath( chUserLocalDataFolder, "USRLOCAL" );
