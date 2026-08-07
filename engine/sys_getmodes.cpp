@@ -767,7 +767,12 @@ void CVideoMode_Common::DrawStartupGraphic()
 	}
 
 	if ( !SetupStartupGraphic() )
+	{
+		Warning( "DrawStartupGraphic: SetupStartupGraphic failed (missing console/background VTF?); skipping splash.\n" );
         return;
+	}
+
+    Msg( "DrawStartupGraphic: begin\n" );
 
     CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
 
@@ -809,6 +814,8 @@ void CVideoMode_Common::DrawStartupGraphic()
 	IMaterial *pTitleMaterial = g_pMaterialSystem->CreateMaterial( "__title", pVMTKeyValues );
 
 #endif // CSTRIKE15
+
+    Msg( "DrawStartupGraphic: materials created\n" );
 
     int w = GetModeWidth();
     int h = GetModeHeight();
@@ -871,6 +878,7 @@ void CVideoMode_Common::DrawStartupGraphic()
 	}
 	else
 	{
+		Msg( "DrawStartupGraphic: drawing\n" );
 		pRenderContext->Viewport( 0, 0, w, h );
 		pRenderContext->DepthRange( 0, 1 );
 		pRenderContext->ClearColor3ub( 0, 0, 0 );
@@ -918,12 +926,16 @@ void CVideoMode_Common::DrawStartupGraphic()
 		DrawScreenSpaceRectangle( pTitleMaterial, title_x, title_y, title_w, title_h, 0, 0, title_w-1, title_h-1, title_w, title_h, NULL,1,1,depth );
 #endif // CSTRIKE15
 
+		Msg( "DrawStartupGraphic: first draw done, swapping\n" );
 		g_pMaterialSystem->SwapBuffers();
 	}
 
 #if defined( DX_TO_GL_ABSTRACTION ) && !defined( _GAMECONSOLE )
+	Msg( "DrawStartupGraphic: shader preload\n" );
 	g_pMaterialSystem->DoStartupShaderPreloading();
 #endif
+
+	Msg( "DrawStartupGraphic: done\n" );
 
     pMaterial->Release();
     pLoadingMaterial->Release();

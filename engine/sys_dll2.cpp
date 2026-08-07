@@ -859,7 +859,26 @@ bool CEngineAPI::SetStartupInfo( StartupInfo_t &info )
 		}
 		else
 		{
+#if defined( ANDROID )
+			// No Steam profile on Android - keep user-local data (configs,
+			// saves) under the app's writable data directory so writes to the
+			// USRLOCAL path succeed.
+			char const *pszAndroidData = getenv( "APP_DATA_PATH" );
+			if ( pszAndroidData && *pszAndroidData )
+			{
+				char chAndroidUsrLocal[ MAX_PATH ] = {};
+				V_ComposeFileName( pszAndroidData, "usrlocal", chAndroidUsrLocal, sizeof( chAndroidUsrLocal ) );
+				g_pFileSystem->CreateDirHierarchy( chAndroidUsrLocal, NULL );
+				Msg( "USRLOCAL path using Android data folder:\n%s\n", chAndroidUsrLocal );
+				g_pFileSystem->AddSearchPath( chAndroidUsrLocal, "USRLOCAL" );
+			}
+			else
+			{
+				Warning( "USRLOCAL path not found!\n" );
+			}
+#else
 			Warning( "USRLOCAL path not found!\n" );
+#endif
 		}
 	}
 #endif

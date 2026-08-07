@@ -979,6 +979,7 @@ bool CGLMShaderPair::SetProgramPair( CGLMProgram *vp, CGLMProgram *fp )
 #endif
 
 		// now link
+		printf( "GLM link: %s + %s\n", vp->m_shaderName, fp->m_shaderName );
 		gGL->glLinkProgram( m_program );
 
 		GLint isLinked = 0;

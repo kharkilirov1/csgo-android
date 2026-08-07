@@ -160,4 +160,6 @@ void InitCrashHandler()
 	sigaction(SIGBUS, &act, &old_sa);
 	sigaction(SIGFPE, &act, &old_sa);
 	sigaction(SIGTRAP, &act, &old_sa);
+	sigaction(SIGILL, &act, &old_sa);
+	sigaction(SIGSYS, &act, &old_sa);
 }

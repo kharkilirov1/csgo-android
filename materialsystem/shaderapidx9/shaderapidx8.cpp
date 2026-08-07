@@ -3076,10 +3076,11 @@ bool CShaderAPIDx8::RestorePersistedDisplay( bool bUseFrontBuffer )
 //-----------------------------------------------------------------------------
 // Initialize, shutdown the Device....
 //-----------------------------------------------------------------------------
-bool CShaderAPIDx8::OnDeviceInit() 
+bool CShaderAPIDx8::OnDeviceInit()
 {
+	Msg( "OnDeviceInit: internal render targets\n" );
 	AcquireInternalRenderTargets();
-	
+
 	g_pHardwareConfig->CapsForEdit().m_TextureMemorySize = g_pShaderDeviceMgrDx8->GetVidMemBytes( m_nAdapter );
 
 	CreateMatrixStacks();
@@ -3093,12 +3094,14 @@ bool CShaderAPIDx8::OnDeviceInit()
 #endif
 
 	// Initialize the shader manager
+	Msg( "OnDeviceInit: shader manager\n" );
 	ShaderManager()->Init();
 
 	// Initialize the shader shadow
 	ShaderShadow()->Init();
 
 	// Initialize the mesh manager
+	Msg( "OnDeviceInit: mesh manager\n" );
 	MeshMgr()->Init();
 
 	m_bToolsMode = IsPlatformWindows() && ( CommandLine()->CheckParm( "-tools" ) != NULL );
@@ -3110,11 +3113,14 @@ bool CShaderAPIDx8::OnDeviceInit()
 	m_TransitionTable.Init();
 
 	// Initialize the render state
+	Msg( "OnDeviceInit: render state\n" );
 	InitRenderState();
 
 	// Clear the z and color buffers
+	Msg( "OnDeviceInit: clear\n" );
 	ClearBuffers( true, true, true, -1, -1 );
 
+	Msg( "OnDeviceInit: frame sync objects\n" );
 	AllocFrameSyncObjects();
 	AllocNonInteractiveRefreshObjects();
 
@@ -3152,10 +3158,11 @@ bool CShaderAPIDx8::OnDeviceInit()
 
 	Dx9Device()->BeginScene();
 
+	Msg( "OnDeviceInit: done\n" );
 	return true;
 }
 
-void CShaderAPIDx8::OnDeviceShutdown() 
+void CShaderAPIDx8::OnDeviceShutdown()
 {
 	if ( IsX360() || !IsActive() )
 		return;

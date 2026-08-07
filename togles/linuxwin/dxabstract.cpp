@@ -2382,7 +2382,11 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 		GLMPRINTF(("<-X- IDirect3DDevice9::Create (error out)"));
 		return (HRESULT) -1;
 	}
-	
+
+	// Boot breadcrumbs + glFinish: force the driver to execute each init step
+	// synchronously so a silent in-driver hang stops right after its label.
+	printf( "BOOT: GLM context created\n" );
+
 	// make an FBO to draw into and activate it.
 	m_ctx->m_drawingFBO = m_ctx->NewFBO();					
 				
@@ -2397,8 +2401,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	// we create two IDirect3DSurface9's.  These will be known as the internal render target 0 and the depthstencil.
 	
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making color render target..."));
+	printf( "BOOT: creating %ux%u backbuffer color RT\n", m_params.m_presentationParameters.BackBufferWidth, m_params.m_presentationParameters.BackBufferHeight );
 	// color surface
-	result = this->CreateRenderTarget( 
+	result = this->CreateRenderTarget(
 		m_params.m_presentationParameters.BackBufferWidth,			// width
 		m_params.m_presentationParameters.BackBufferHeight,			// height
 		m_params.m_presentationParameters.BackBufferFormat,			// format
@@ -2417,6 +2422,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 		// do not do an AddRef..
 
+	gGL->glFinish();
+	printf( "BOOT: backbuffer color RT ok\n" );
+
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making color render target complete -> %08x", m_pDefaultColorSurface ));
 
 	GLMPRINTF(("-X- IDirect3DDevice9::Create setting color render target..."));
@@ -2431,6 +2439,7 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	Assert (m_params.m_presentationParameters.EnableAutoDepthStencil);
 
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making depth-stencil..."));
+	printf( "BOOT: creating depth-stencil\n" );
     result = CreateDepthStencilSurface(
 		m_params.m_presentationParameters.BackBufferWidth,			// width
 		m_params.m_presentationParameters.BackBufferHeight,			// height
@@ -2448,6 +2457,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 		// do not do an AddRef here..
 
+	gGL->glFinish();
+	printf( "BOOT: depth-stencil ok\n" );
+
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making depth-stencil complete -> %08x", m_pDefaultDepthStencilSurface));
 	GLMPRINTF(("-X- Direct3DDevice9::Create setting depth-stencil render target..."));
 	result = this->SetDepthStencilSurface(m_pDefaultDepthStencilSurface);
@@ -2461,7 +2473,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 
 	UpdateBoundFBO();
 
+	printf( "BOOT: checking FBO completeness\n" );
 	bool ready = m_ctx->m_drawingFBO->IsReady();
+	printf( "BOOT: FBO ready=%d\n", (int)ready );
 	if (!ready)
 	{
 		GLMPRINTF(("<-X- IDirect3DDevice9::Create (error out)"));
@@ -2469,7 +2483,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 
 	// this next part really needs to be inside GLMContext.. or replaced with D3D style viewport setup calls.
+	printf( "BOOT: debug font tex\n" );
 	m_ctx->GenDebugFontTex();
+	gGL->glFinish();
 	
 	// blast the gl state mirror...
 	memset( &this->gl, 0, sizeof( this->gl ) );
@@ -2490,8 +2506,10 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	gl.m_CullFaceEnable		=	defCullFaceEnable;
 	gl.m_CullFrontFace		=	defCullFrontFace;
 		
+	printf( "BOOT: flushing initial GL state\n" );
 	FullFlushStates();
-	
+	gGL->glFinish();
+
 	GLMPRINTF(("<-X- IDirect3DDevice9::Create complete"));
 
 	// so GetClientRect can return sane answers
@@ -2512,12 +2530,14 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	gGL->m_nTotalGLCycles = 0;
 	gGL->m_nTotalGLCalls = 0;
 
+	printf( "BOOT: dummy vertex buffer\n" );
 	m_pDummy_vtx_buffer = new CGLMBuffer( m_ctx, kGLMVertexBuffer, 4096, 0 );
 	m_vtx_buffers[0] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[1] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[2] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[3] = m_pDummy_vtx_buffer;
-	
+
+	printf( "BOOT: device create done\n" );
 	return result;
 }
 

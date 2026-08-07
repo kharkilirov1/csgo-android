@@ -1800,6 +1800,8 @@ CGLMProgram	*GLMContext::NewProgram( EGLMProgramType type, char *progString, con
 {
 	//hushed GLM_FUNC;
 
+	printf( "GLM compile %s: %s\n", ( type == kGLMVertexProgram ) ? "vs" : "fs", pShaderName ? pShaderName : "?" );
+
 	CGLMProgram *prog = new CGLMProgram( this, type );
 	
 	prog->SetProgramText( progString );
@@ -2453,6 +2455,9 @@ GLMContext::GLMContext( IDirect3DDevice9 *pDevice, GLMDisplayParams *params )
 #if defined( USE_SDL )
 	m_ctx = (SDL_GLContext)GetGLContextForWindow( params ? (void*)params->m_focusWindow : NULL );
 	MakeCurrent( true );
+	// Boot breadcrumbs: failures in this window are often silent on device
+	// (in-driver hang or uncatchable kill), so mark progress explicitly.
+	printf( "BOOT: GL context made current\n" );
 #else
 #error
 #endif
@@ -2583,6 +2588,7 @@ GLMContext::GLMContext( IDirect3DDevice9 *pDevice, GLMDisplayParams *params )
 	m_preload2DTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preload2DTexFragmentProgramText, "preload2DTex" );
 	m_preload3DTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preload3DTexFragmentProgramText, "preload3DTex" );
 	m_preloadCubeTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preloadCubeTexFragmentProgramText, "preloadCube" );
+	printf( "BOOT: bootstrap shaders compiled\n" );
 		
 	//memset( &m_drawVertexSetup, 0, sizeof(m_drawVertexSetup) );
 	SetVertexAttributes( NULL );	// will set up all the entries in m_drawVertexSetup
