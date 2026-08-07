@@ -5236,25 +5236,33 @@ void CMeshMgr::Init()
 	m_DynamicFlexMesh.Init( 1 );
 
 	// The dynamic index buffer
+	Msg( "MeshMgr::Init: dynamic index buffer\n" );
 	m_pDynamicIndexBuffer = new CIndexBuffer( Dx9Device(), INDEX_BUFFER_SIZE, ShaderAPI()->UsingSoftwareVertexProcessing(), true );
 
 	// If we're running in vs3.0, allocate a vertexID buffer
+	Msg( "MeshMgr::Init: vertexID buffer\n" );
 	CreateVertexIDBuffer();
+	Msg( "MeshMgr::Init: zero vertex buffer\n" );
 	CreateZeroVertexBuffer();
+	Msg( "MeshMgr::Init: empty color buffer\n" );
 	CreateEmptyColorBuffer();
 
 	// If we're running in vs3.0, allocate index and vertex buffers for pre-tessellated patches
+	Msg( "MeshMgr::Init: pre-tess patch buffers\n" );
 	CreatePreTessPatchIndexBuffers();
 	CreatePreTessPatchVertexBuffers();
 
 	// Track these 2 allocations as well.
 	g_VBAllocTracker->TrackMeshAllocations( "CreateDynamicIndexBuffers" );
+	Msg( "MeshMgr::Init: dynamic IB allocate\n" );
 	m_DynamicIndexBuffer.Allocate();
 	g_VBAllocTracker->TrackMeshAllocations( NULL );
 
 	g_VBAllocTracker->TrackMeshAllocations( "CreateDynamicVertexBuffers" );
+	Msg( "MeshMgr::Init: dynamic VB allocate\n" );
 	m_DynamicVertexBuffer.Allocate();
 	g_VBAllocTracker->TrackMeshAllocations( NULL );
+	Msg( "MeshMgr::Init: done\n" );
 }
 
 void CMeshMgr::Shutdown()
@@ -5328,7 +5336,12 @@ void CMeshMgr::FillVertexIDBuffer( CVertexBuffer *pVertexIDBuffer, int nCount )
 
 	// Fill the buffer with the values 0->(nCount-1)
 	int nBaseVertexIndex = 0;
-	float *pBuffer = (float*)pVertexIDBuffer->Lock( nCount, nBaseVertexIndex );	
+	float *pBuffer = (float*)pVertexIDBuffer->Lock( nCount, nBaseVertexIndex );
+	if ( !pBuffer )
+	{
+		Warning( "FillVertexIDBuffer: Lock failed!\n" );
+		return;
+	}
 	for ( int i = 0; i < nCount; ++i )
 	{
 		*pBuffer++ = (float)i;
@@ -5510,6 +5523,11 @@ void CMeshMgr::FillEmptyColorBuffer( CVertexBuffer *pEmptyColorBuffer, int nCoun
 	// Fill the buffer with the values 0->(nCount-1)
 	int nBaseVertexIndex = 0;
 	D3DCOLOR *pBuffer = (D3DCOLOR*)pEmptyColorBuffer->Lock( nCount, nBaseVertexIndex );
+	if ( !pBuffer )
+	{
+		Warning( "FillEmptyColorBuffer: Lock failed!\n" );
+		return;
+	}
 	memset( pBuffer, 0, nCount * sizeof(D3DCOLOR) );
 	pEmptyColorBuffer->Unlock( nCount );
 }

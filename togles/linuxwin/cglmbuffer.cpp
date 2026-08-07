@@ -852,6 +852,13 @@ void CGLMBuffer::Lock( GLMBuffLockParams *pParams, char **pAddressOut )
 #endif
 
 		mapPtr = (char*)gGL->glMapBufferRange( m_buffGLTarget, pParams->m_nOffset, pParams->m_nSize, parms);
+		if ( !mapPtr )
+		{
+			// A failed mapping otherwise surfaces as a null deref in whichever
+			// caller writes to the lock - name the failure here instead.
+			printf( "CGLMBuffer::Lock: glMapBufferRange FAILED (target=0x%x offset=%d size=%d parms=0x%x glErr=0x%x)\n",
+				(uint)m_buffGLTarget, (int)pParams->m_nOffset, (int)pParams->m_nSize, (uint)parms, (uint)gGL->glGetError() );
+		}
 
 #ifdef REPORT_LOCK_TIME
 		double flEnd = Plat_FloatTime();

@@ -150,8 +150,20 @@ static void CrashHandler( int sig, siginfo_t *si, void *uc)
 		(*old_sa.sa_handler)(sig);
 }
 
+// SA_ONSTACK is useless without an actual alternate stack: on a stack
+// overflow the handler would fault again before printing anything and the
+// process dies silently. Note sigaltstack() only applies to the calling
+// (main) thread.
+static char s_crashAltStack[256 * 1024];
+
 void InitCrashHandler()
 {
+	stack_t ss;
+	ss.ss_sp = s_crashAltStack;
+	ss.ss_size = sizeof( s_crashAltStack );
+	ss.ss_flags = 0;
+	sigaltstack( &ss, NULL );
+
 	struct sigaction act;
 	act.sa_sigaction = CrashHandler;
 	act.sa_flags = SA_SIGINFO | SA_ONSTACK;
