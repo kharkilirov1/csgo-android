@@ -1372,6 +1372,34 @@ void CBaseModPanel::CreateGameMenu()
 	{
 		m_pGameMenu = RecursiveLoadGameMenu(datafile);
 	}
+#if defined( __ANDROID__ )
+	else
+	{
+		// Resource/GameMenu.res ships in the game content, which may be
+		// incomplete on Android. A built-in minimal menu beats dying before
+		// the first frame. Plain-text labels: localization may be missing too.
+		Warning( "CreateGameMenu: no Resource/GameMenu.res; using the built-in menu.\n" );
+
+		struct { const char *name; const char *label; const char *command; bool bOnlyInGame; } items[] = {
+			{ "ResumeGame",   "RESUME GAME",  "ResumeGame",                        true  },
+			{ "Disconnect",   "DISCONNECT",   "Disconnect",                        true  },
+			{ "PlayOffline",  "PLAY OFFLINE", "OpenCreateMultiplayerGameDialog",   false },
+			{ "FindServers",  "FIND SERVERS", "OpenServerBrowser",                 false },
+			{ "Options",      "OPTIONS",      "OpenOptionsDialog",                 false },
+			{ "Quit",         "QUIT",         "QuitNoConfirm",                     false },
+		};
+		for ( int i = 0; i < (int)ARRAYSIZE( items ); i++ )
+		{
+			KeyValues *pItem = new KeyValues( items[i].name );
+			pItem->SetString( "label", items[i].label );
+			pItem->SetString( "command", items[i].command );
+			if ( items[i].bOnlyInGame )
+				pItem->SetInt( "OnlyInGame", 1 );
+			datafile->AddSubKey( pItem );
+		}
+		m_pGameMenu = RecursiveLoadGameMenu( datafile );
+	}
+#endif
 
 	if ( !m_pGameMenu )
 	{
