@@ -3166,12 +3166,14 @@ unsigned int CL_GetStartupIndex()
 //-----------------------------------------------------------------------------
 void CL_GetStartupImage( char *pOutBuffer, int nOutBufferSize )
 {
-#if defined( CSTRIKE15)
+#if defined( CSTRIKE15) || defined( ANDROID )
 	// CStrike15 uses a specific startup image instead of the random image.
 	// CSGO always uses a widescreen format image, regardless of the screen resolution,
 	// to match how the Scaleform background is drawn.  CVideoMode_Common::DrawStartupGraphic
 	// takes care of repositioning and scaling this image to match the method
 	// used in Scaleform.
+	// The engine module builds without CSTRIKE15, but the Android port only
+	// ships CS:GO, whose content has no Portal 2 startup images.
 	V_strncpy( pOutBuffer, "console/background01_widescreen", nOutBufferSize );
 #else
 	const AspectRatioInfo_t &aspectRatioInfo = materials->GetAspectRatioInfo();

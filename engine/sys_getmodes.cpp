@@ -627,7 +627,13 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pBackgroundTexture = LoadVTF( buf, startupName );
 	if ( !m_pBackgroundTexture )
 	{
+#if defined( ANDROID )
+		// Startup splash art is optional on Android: skip the splash rather
+		// than killing the launch over missing content.
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", startupName );
+#else
 		Error( "Can't find background image '%s'\n", startupName );
+#endif
 		return false;
 	}
 
@@ -638,7 +644,13 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pLoadingTexture = LoadVTF( buf, pLoadingName );
 	if ( !m_pLoadingTexture )
 	{
+#if defined( ANDROID )
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", pLoadingName );
+		DestroyVTFTexture( m_pBackgroundTexture );
+		m_pBackgroundTexture = NULL;
+#else
 		Error( "Can't find background image %s\n", pLoadingName );
+#endif
 		return false;
 	}
 
@@ -652,7 +664,15 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pTitleTexture = LoadVTF( buf, pTitleName );
 	if ( !m_pTitleTexture )
 	{
+#if defined( ANDROID )
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", pTitleName );
+		DestroyVTFTexture( m_pBackgroundTexture );
+		m_pBackgroundTexture = NULL;
+		DestroyVTFTexture( m_pLoadingTexture );
+		m_pLoadingTexture = NULL;
+#else
 		Error( "Can't find title image %s\n", pTitleName );
+#endif
 		return false;
 	}
 
