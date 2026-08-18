@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -245,7 +245,7 @@ bool CEngineSprite::Init( const char *pName )
 		}
 	}
 #if !defined( _GAMECONSOLE ) || defined( BINK_ENABLED_FOR_CONSOLE )
-	else if ( bIsBIK )
+	else if ( bIsBIK && bik )
 	{
 		m_hBIKMaterial = bik->CreateMaterial( pName, pName, "GAME" );
 		if ( m_hBIKMaterial == BIKMATERIAL_INVALID )

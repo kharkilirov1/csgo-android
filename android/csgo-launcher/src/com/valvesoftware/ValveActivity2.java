@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.os.Looper;
 import android.util.Log;
 
 import java.io.File;
@@ -20,6 +21,8 @@ public final class ValveActivity2 { // JNI bridge; intentionally not an Activity
 	public static final String EXTRA_ENV = "env";
 	public static final String EXTRA_GAME_PATH = "gamepath";
 	private static final String EXTRA_BUNDLED_VPK_PATH = "bundled_vpk_path";
+	private static final String EXTRA_CONTENT_VALIDATION_TOKEN =
+		"content_validation_token";
 	private static final String EXTRA_STARTUP_ERROR = "startup_error";
 
 	private static final String TAG = "SRCAPK";
@@ -58,6 +61,14 @@ public final class ValveActivity2 { // JNI bridge; intentionally not an Activity
 		return resolved;
 	}
 
+	private static int contentPreflightErrorResource(GameContentValidator.Result result) {
+		if (result != null && result.getStatus() ==
+			GameContentValidator.Status.UNSUPPORTED_AUTOMATIC_OVERLAY) {
+			return R.string.srceng_launcher_error_unsupported_content_overlay;
+		}
+		return R.string.srceng_launcher_error_missing_weapon_content;
+	}
+
 	public static boolean preInit(Context context, Intent intent) {
 		intent.removeExtra(EXTRA_STARTUP_ERROR);
 		String gameRoot = resolveGameRoot(context, intent);
@@ -66,6 +77,42 @@ public final class ValveActivity2 { // JNI bridge; intentionally not an Activity
 			intent.putExtra(EXTRA_STARTUP_ERROR,
 				R.string.srceng_launcher_error_find_gameinfo);
 			return false;
+		}
+		String validationToken = intent.getStringExtra(EXTRA_CONTENT_VALIDATION_TOKEN);
+		GameContentValidator.Result contentResult =
+			GameContentValidator.findPreparedValidation(modDirectory, validationToken);
+		if (contentResult == null) {
+			// LauncherActivity performs the only full content scan on its worker.
+			// A direct/recreated SDLActivity without that process-local capability
+			// fails quickly instead of reading VPKs on Android's UI thread.
+			if (Looper.myLooper() == Looper.getMainLooper()) {
+				Log.e(TAG, "External game content was not prepared by the launcher worker");
+				intent.putExtra(EXTRA_STARTUP_ERROR,
+					R.string.srceng_launcher_error_missing_weapon_content);
+				return false;
+			}
+			contentResult = GameContentValidator.validate(modDirectory);
+			if (!contentResult.isValid()) {
+				Log.e(TAG, "External game content preflight failed: " +
+					contentResult.getDiagnostic());
+				intent.putExtra(EXTRA_STARTUP_ERROR,
+					contentPreflightErrorResource(contentResult));
+				return false;
+			}
+			validationToken = GameContentValidator.rememberSuccessfulValidation(
+				modDirectory, contentResult);
+			if (validationToken == null) {
+				Log.e(TAG, "Could not bind external game content validation to its path");
+				intent.putExtra(EXTRA_STARTUP_ERROR,
+					R.string.srceng_launcher_error_missing_weapon_content);
+				return false;
+			}
+			intent.putExtra(EXTRA_CONTENT_VALIDATION_TOKEN, validationToken);
+			Log.i(TAG, "External game content preflight passed: " +
+				contentResult.getDiagnostic());
+		} else {
+			Log.i(TAG, "Using prepared external game content validation: " +
+				contentResult.getDiagnostic());
 		}
 		return prepareBundledExtras(context, intent) != null;
 	}
@@ -143,7 +190,7 @@ public final class ValveActivity2 { // JNI bridge; intentionally not an Activity
 		ApplicationInfo applicationInfo = context.getApplicationInfo();
 		String gameRoot = resolveGameRoot(context, intent);
 		String gameDirectory = getGameDirectory(intent);
-		String arguments = intentOrPreference(intent, preferences, EXTRA_ARGS, "-console");
+		String arguments = intentOrPreference(intent, preferences, EXTRA_ARGS, "");
 		String gameLibraryDirectory = intent.getStringExtra("gamelibdir");
 		File bundledExtras = prepareBundledExtras(context, intent);
 		if (bundledExtras == null)

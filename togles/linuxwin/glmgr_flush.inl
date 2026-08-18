@@ -47,6 +47,7 @@ FORCEINLINE GLuint GLMContext::FindSamplerObject( const GLMTexSamplingParams &de
 // BE VERY CAREFUL WHAT YOU DO IN HERE. This is called on every batch, even seemingly simple changes can kill perf.
 FORCEINLINE void GLMContext::FlushDrawStates( uint nStartIndex, uint nEndIndex, uint nBaseVertex )	// shadersOn = true for draw calls, false for clear calls
 {
+	{ static int s_n = 0; if ( s_n < 60 ) printf( "FD: #%d enter\n", s_n++ ); }
 	Assert( m_drawingLang == kGLMGLSL ); // no support for ARB shaders right now (and NVidia reports that they aren't worth targeting under Windows/Linux for various reasons anyway)
 	Assert( ( m_drawingFBO == m_boundDrawFBO ) && ( m_drawingFBO == m_boundReadFBO ) ); // this check MUST succeed
 	Assert( m_pDevice->m_pVertDecl );
@@ -199,6 +200,7 @@ FORCEINLINE void GLMContext::FlushDrawStates( uint nStartIndex, uint nEndIndex, 
 			}
 
 			gGL->glUseProgram( (GLuint)pNewPair->m_program );
+			{ static int s_n = 0; if ( s_n < 60 ) printf( "FD: #%d program-bound\n", s_n++ ); }
 			
 			GL_BATCH_PERF( m_FlushStats.m_nTotalProgramPairChanges++; )
 
@@ -628,5 +630,6 @@ FORCEINLINE void GLMContext::FlushDrawStates( uint nStartIndex, uint nEndIndex, 
 flush_error_exit:
 	m_pBoundPair = NULL;
 	m_bDirtyPrograms = true;
+	{ static int s_n = 0; if ( s_n < 60 ) printf( "FD: #%d done\n", s_n++ ); }
 	return;
 }

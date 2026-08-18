@@ -1083,6 +1083,14 @@ void CMatSystemSurface::InternalSetMaterial( IMaterial *pMaterial )
 		pMaterial = m_pWhite;
 	}
 
+#ifdef ANDROID
+	if ( !pMaterial )
+	{
+		m_pMesh = NULL;
+		return;
+	}
+#endif
+
 	CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
 	m_pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, pMaterial );
 }
@@ -1369,6 +1377,10 @@ void CMatSystemSurface::DrawQuadArray( int quadCount, Vertex_t *pVerts, unsigned
 		}
 
 		meshBuilder.End();
+#ifdef ANDROID
+		if ( !m_pMesh )
+			return;
+#endif
 		m_pMesh->Draw();
 
 		nFirstQuad += quadCount;

@@ -183,6 +183,105 @@ class LauncherIntegrationContractTest(unittest.TestCase):
         extractor = self.read("android/csgo-launcher/src/me/nillerusr/ExtractAssets.java")
         self.assertIn("public static synchronized File extractVPK", extractor)
 
+    def test_launcher_fails_closed_on_incomplete_external_weapon_content(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        preflight = bridge[bridge.index("public static boolean preInit(") :]
+        preflight = preflight[: preflight.index("public static int getStartupErrorResource")]
+
+        validation = "GameContentValidator.validate(modDirectory)"
+        self.assertIn(validation, preflight)
+        self.assertIn("if (!contentResult.isValid())", preflight)
+        self.assertIn("contentResult.getDiagnostic()", preflight)
+        self.assertIn(
+            "R.string.srceng_launcher_error_missing_weapon_content", preflight
+        )
+        self.assertLess(
+            preflight.index(validation), preflight.index("prepareBundledExtras(context, intent)")
+        )
+
+        strings = ET.parse(LAUNCHER / "res" / "values" / "strings.xml").getroot()
+        message = next(
+            node.text
+            for node in strings.findall("string")
+            if node.attrib.get("name")
+            == "srceng_launcher_error_missing_weapon_content"
+        )
+        self.assertIn("scripts/weapon_manifest.txt", message)
+        self.assertIn("weapon_healthshot", message)
+        self.assertIn("does not include CS:GO game data", message)
+        self.assertIn("plaintext", message)
+        self.assertNotIn(".ctx", message)
+        for localized in (
+            "res/values-ru/string.xml",
+            "res/values-zh-rCN/strings.xml",
+            "res/values-zh-rTW/strings.xml",
+        ):
+            localized_root = ET.parse(LAUNCHER / localized).getroot()
+            localized_message = next(
+                node.text
+                for node in localized_root.findall("string")
+                if node.attrib.get("name")
+                == "srceng_launcher_error_missing_weapon_content"
+            )
+            self.assertNotIn(".ctx", localized_message)
+
+    def test_content_preflight_cache_keeps_full_scan_off_sdl_ui_thread(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        preflight = bridge[bridge.index("public static boolean preInit(") :]
+        preflight = preflight[: preflight.index("public static int getStartupErrorResource")]
+
+        cache_lookup = "GameContentValidator.findPreparedValidation("
+        main_thread = "Looper.myLooper() == Looper.getMainLooper()"
+        full_scan = "GameContentValidator.validate(modDirectory)"
+        cache_store = "GameContentValidator.rememberSuccessfulValidation("
+        self.assertIn("EXTRA_CONTENT_VALIDATION_TOKEN", preflight)
+        self.assertIn(cache_lookup, preflight)
+        self.assertIn(main_thread, preflight)
+        self.assertIn(full_scan, preflight)
+        self.assertIn(cache_store, preflight)
+        self.assertLess(preflight.index(cache_lookup), preflight.index(main_thread))
+        self.assertLess(preflight.index(main_thread), preflight.index(full_scan))
+        self.assertLess(preflight.index(full_scan), preflight.index(cache_store))
+
+        manifest = ET.parse(LAUNCHER / "AndroidManifest.xml").getroot()
+        activities = {
+            node.attrib[ANDROID_NS + "name"]: node
+            for node in manifest.findall("./application/activity")
+        }
+        self.assertEqual(
+            "false",
+            activities["org.libsdl.app.SDLActivity"].attrib[ANDROID_NS + "exported"],
+        )
+
+    def test_native_overlay_preflight_has_a_specific_localized_error(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        self.assertIn("UNSUPPORTED_AUTOMATIC_OVERLAY", bridge)
+        self.assertIn("srceng_launcher_error_unsupported_content_overlay", bridge)
+
+        localized_files = (
+            "res/values/strings.xml",
+            "res/values-ru/string.xml",
+            "res/values-zh-rCN/strings.xml",
+            "res/values-zh-rTW/strings.xml",
+        )
+        for localized in localized_files:
+            root = ET.parse(LAUNCHER / localized).getroot()
+            message = next(
+                (node.text or "")
+                for node in root.findall("string")
+                if node.attrib.get("name")
+                == "srceng_launcher_error_unsupported_content_overlay"
+            )
+            self.assertIn("xlsppatch", message)
+            self.assertIn("update", message)
+            self.assertIn("csgo_dlc", message)
+
     def test_sdl_shutdown_wait_is_bounded_and_fails_closed(self):
         sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
         destroy = sdl[sdl.index("protected void onDestroy()") :]

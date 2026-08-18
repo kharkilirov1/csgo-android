@@ -469,7 +469,20 @@ def configure(conf):
 
 	if sys.platform == 'win32':
 		conf.load('msvc_pdb_ext msdev msvs msvcdeps')
-	conf.load('subproject xcompile compiler_c compiler_cxx gccdeps gitversion clang_compilation_database strip_on_install_v2 waf_unit_test enforce_pic')
+	conf.load('subproject xcompile')
+	if conf.env.DEST_OS == 'android' or conf.options.ANDROID_OPTS:
+		if sys.platform == 'win32':
+			# xcompile has put the NDK clang into conf.environ, but waf's
+			# win32 compiler_cxx would still probe MSVC first (using the
+			# clang binary with MSVC flags -> fail). Publish the compiler
+			# into conf.env so find_cxx/cc skip the probe.
+			conf.env.COMPILER_CC = 'clang'
+			conf.env.COMPILER_CXX = 'clang'
+			if conf.environ.get('CC'):
+				conf.env.CC = conf.environ['CC'].split()
+			if conf.environ.get('CXX'):
+				conf.env.CXX = conf.environ['CXX'].split()
+	conf.load('compiler_c compiler_cxx gccdeps gitversion clang_compilation_database strip_on_install_v2 waf_unit_test enforce_pic')
 	if conf.env.DEST_OS == 'win32' and conf.env.DEST_CPU == 'amd64':
 		conf.load('masm')
 	elif conf.env.DEST_OS == 'darwin':

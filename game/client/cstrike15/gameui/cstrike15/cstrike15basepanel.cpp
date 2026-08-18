@@ -1280,7 +1280,8 @@ void CCStrike15BasePanel::RunFrame( void )
 			ePos = k_EPositionBottomLeft;
 		else if ( !V_stricmp( ui_steam_overlay_notification_position.GetString(), "topleft" ) )
 			ePos = k_EPositionTopLeft;
-		steamapicontext->SteamUtils()->SetOverlayNotificationPosition( ePos );
+		if ( steamapicontext && steamapicontext->SteamUtils() )
+			steamapicontext->SteamUtils()->SetOverlayNotificationPosition( ePos );
 	}
 #endif
 

@@ -154,6 +154,7 @@ bool s_bTriggeredHostError = false;
 
 void V_RenderVGuiOnly( void )
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "VRV: V_RenderVGuiOnly #%d\n", s_n - 1 ); }
 	materials->BeginFrame( host_frametime );
 
 	CMatRenderContextPtr pRenderContext;

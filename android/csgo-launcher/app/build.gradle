@@ -4,6 +4,95 @@ plugins {
 
 def buildVersionCode = providers.environmentVariable("CSGO_VERSION_CODE").orElse("1").get().toInteger()
 def buildVersionName = providers.environmentVariable("CSGO_VERSION_NAME").orElse("0.1.0-local").get()
+def releaseVersionCode = providers.environmentVariable("CSGO_VERSION_CODE").orNull
+def releaseVersionName = providers.environmentVariable("CSGO_VERSION_NAME").orNull
+def releasePipelineGuard = providers.environmentVariable("CSGO_RELEASE_PIPELINE").orNull
+def SANITIZED_RELEASE_BOOTSTRAP_SHA256 =
+    "d24a4ed62db4c39d9db5f7160bdf9fc889efaeefa7c199e7b799aa14b9a49dbe"
+def releaseSigning = [
+    keystore: providers.environmentVariable("CSGO_RELEASE_KEYSTORE").orNull,
+    storePassword: providers.environmentVariable("CSGO_RELEASE_KEYSTORE_PASSWORD").orNull,
+    keyAlias: providers.environmentVariable("CSGO_RELEASE_KEY_ALIAS").orNull,
+    keyPassword: providers.environmentVariable("CSGO_RELEASE_KEY_PASSWORD").orNull,
+]
+def releaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.toLowerCase().contains("release")
+}
+def releaseBootstrapAssets = providers.environmentVariable("CSGO_RELEASE_BOOTSTRAP_ASSETS").orNull
+def missingReleaseSigning = releaseSigning.findAll { _, value -> value == null || value.isEmpty() }.keySet()
+def sha256File = { File input ->
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+    input.eachByte(1024 * 1024) { byte[] buffer, int count ->
+        digest.update(buffer, 0, count)
+    }
+    digest.digest().encodeHex().toString()
+}
+
+def validateReleaseEnvironment = {
+    if (releasePipelineGuard != "android-release-wrapper-v1") {
+        throw new GradleException(
+            "Release tasks must run through scripts/build-apk-aarch64.sh so the final APK verifier cannot be skipped"
+        )
+    }
+    if (releaseVersionCode == null || !(releaseVersionCode ==~ /[1-9][0-9]*/) ||
+        releaseVersionCode.toLong() > 2100000000L) {
+        throw new GradleException(
+            "Release versionCode is fail-closed; CSGO_VERSION_CODE must be 1..2100000000"
+        )
+    }
+    if (releaseVersionName == null ||
+        !(releaseVersionName ==~ /[0-9A-Za-z][0-9A-Za-z._+\-]{0,99}/)) {
+        throw new GradleException(
+            "Release versionName is fail-closed; CSGO_VERSION_NAME must use 1-100 safe ASCII characters"
+        )
+    }
+    if (!missingReleaseSigning.isEmpty()) {
+        throw new GradleException(
+            "Release signing is fail-closed; missing environment values: " +
+                missingReleaseSigning.join(", ")
+        )
+    }
+    if (!file(releaseSigning.keystore).isFile()) {
+        throw new GradleException("Release keystore does not exist: ${releaseSigning.keystore}")
+    }
+    if (releaseBootstrapAssets == null || releaseBootstrapAssets.isEmpty()) {
+        throw new GradleException(
+            "Release bootstrap assets are fail-closed; CSGO_RELEASE_BOOTSTRAP_ASSETS is required"
+        )
+    }
+    File releaseBootstrapVpk = new File(releaseBootstrapAssets, "extras_dir.vpk")
+    if (!releaseBootstrapVpk.isFile()) {
+        throw new GradleException(
+            "Sanitized release bootstrap VPK does not exist under CSGO_RELEASE_BOOTSTRAP_ASSETS"
+        )
+    }
+    String releaseBootstrapSha256 = sha256File(releaseBootstrapVpk)
+    if (releaseBootstrapSha256 != SANITIZED_RELEASE_BOOTSTRAP_SHA256) {
+        throw new GradleException(
+            "Release bootstrap VPK is not the reviewed deterministic sanitizer output: " +
+                releaseBootstrapSha256
+        )
+    }
+}
+
+if (releaseTaskRequested) {
+    validateReleaseEnvironment()
+}
+
+def repositoryRoot = rootProject.projectDir.parentFile.parentFile
+def licenseFile = new File(repositoryRoot, "LICENSE")
+def noticesFile = new File(repositoryRoot, "thirdpartylegalnotices.txt")
+for (legalFile in [licenseFile, noticesFile]) {
+    if (!legalFile.isFile() || legalFile.length() == 0) {
+        throw new GradleException("Required legal file is missing or empty: ${legalFile}")
+    }
+}
+def generatedLegalAssets = file("$buildDir/generated/legalAssets")
+def generateLegalAssets = tasks.register("generateLegalAssets", Copy) {
+    from(licenseFile)
+    from(noticesFile)
+    into(new File(generatedLegalAssets, "legal"))
+}
 
 android {
     namespace "com.valvesoftware.source"
@@ -21,13 +110,43 @@ android {
         }
     }
 
+    signingConfigs {
+        if (missingReleaseSigning.isEmpty()) {
+            release {
+                storeFile file(releaseSigning.keystore)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            debuggable false
+            minifyEnabled false
+            shrinkResources false
+            if (missingReleaseSigning.isEmpty()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
     sourceSets {
         main {
             manifest.srcFile "../AndroidManifest.xml"
             java.srcDirs = ["../src"]
             res.srcDirs = ["../res"]
-            assets.srcDirs = ["../assets"]
+            assets.srcDirs = [generatedLegalAssets]
             jniLibs.srcDirs = ["../jniLibs"]
+        }
+        debug {
+            assets.srcDirs = ["../assets"]
+        }
+        release {
+            if (releaseBootstrapAssets != null && !releaseBootstrapAssets.isEmpty()) {
+                assets.srcDirs = [releaseBootstrapAssets]
+            }
         }
     }
 
@@ -35,5 +154,21 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(generateLegalAssets)
+}
+
+// Generic lifecycle tasks such as `assemble` also include assembleRelease,
+// even though "release" is absent from the requested task name. Refuse that
+// graph before execution unless the same signing and sanitized-asset contract
+// is present.
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { task ->
+        task.project == project && task.name.toLowerCase().contains("release")
+    }) {
+        validateReleaseEnvironment()
     }
 }

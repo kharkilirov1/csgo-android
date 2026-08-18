@@ -934,9 +934,12 @@ bool CBaseServer::ProcessConnectionlessPacket(netpacket_t * packet)
 
 
 		case A2S_GETCHALLENGE :  
-#if !defined(NO_STEAM)
+			printf( "SVN: getchallenge\n" );
+#if !defined(NO_STEAM) && !defined( __ANDROID__ )
 			// Drop packet if we don't yet have our Steam ID
-			// because we're still logging on
+			// because we're still logging on. Android ships a stub
+			// steam_api that never logs on; replying is required for
+			// the offline listen server to connect its local client.
 			if ( !Steam3Server().BHasLogonResult() )
 				break;
 #endif

@@ -5862,7 +5862,11 @@ void CCSPlayer::AddAccountAward( PlayerCashAward::Type reason, int amount, const
 		// if award amount is non-default, use the verbose message.
 		if ( pWeapon && ( amount != cash_player_killed_enemy_default.GetInt() ))
 		{
-			szWeaponName = pWeapon->GetEconItemView()->GetItemDefinition()->GetItemBaseName();
+			// offline stub-econ: item view or definition may be missing
+			const CEconItemView *pAwardView = pWeapon ? pWeapon->GetEconItemView() : NULL;
+			const CEconItemDefinition *pAwardDef = pAwardView ? pAwardView->GetItemDefinition() : NULL;
+			if ( pAwardDef )
+				szWeaponName = pAwardDef->GetItemBaseName();
 			awardReasonToken = "#Player_Cash_Award_Killed_Enemy";
 		}
 

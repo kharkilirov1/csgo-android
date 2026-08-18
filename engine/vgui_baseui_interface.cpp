@@ -707,6 +707,7 @@ void CEngineVGui::PreparePanel( Panel *panel, int nZPos, bool bVisible /*= true*
 //-----------------------------------------------------------------------------
 void CEngineVGui::Init()
 {
+	printf( "EUI: CEngineVGui::Init begin\n" );
 	const char *szDllName = "";
 	
 	if ( CommandLine()->FindParm( "-gameuidll" ) )

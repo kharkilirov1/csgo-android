@@ -50,3 +50,7 @@ android/csgo-launcher/local.properties
 android/csgo-launcher/build/
 android/csgo-launcher/app/build/
 android/csgo-launcher/.gradle/
+
+# local diagnostics (screenshots, APKs, logs)
+.diag/
+.codex-*.png

@@ -1,0 +1,21 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -qq && apt-get install -y -qq \
+    libsdl2-dev libfreetype6-dev libopenal-dev libcurl4-openssl-dev \
+    libedit-dev libjpeg-dev libpng-dev libbz2-dev unzip \
+    python3 git wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# NDK r20b (same SHA256 as CI: scripts/android-aarch64-common.sh)
+RUN wget -q https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip -O /tmp/ndk.zip \
+    && printf '%s  %s\n' "8381c440fe61fcbb01e209211ac01b519cd6adf51ab1c2281d5daad6ca4c8c8c" /tmp/ndk.zip | sha256sum -c - \
+    && unzip -q /tmp/ndk.zip -d /opt \
+    && rm /tmp/ndk.zip
+
+ENV ANDROID_NDK_HOME=/opt/android-ndk-r20b
+ENV NDK_HOME=/opt/android-ndk-r20b
+ENV PATH="/opt/android-ndk-r20b/toolchains/llvm/prebuilt/linux-x86_64/bin:${PATH}"
+
+WORKDIR /src

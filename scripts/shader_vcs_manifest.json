@@ -1,0 +1,163 @@
+{
+  "version": 2,
+  "path_id": "PLATFORM",
+  "root": "shaders",
+  "purpose": "runtime_probe_only",
+  "release_qualifying": false,
+  "coverage_scope": "observed_static_ids_with_worklist_valid_dynamics",
+  "full_shader_coverage": false,
+  "requires_runtime_shader_creation_witness": true,
+  "required": [
+    {
+      "path": "vsh/depthwrite_vs30.vcs",
+      "total_combos": 24,
+      "dynamic_combos": 4,
+      "source_crc32": 3409629909,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "vs_3_0",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0, 1, 2, 3, 4, 5],
+            "dynamic_ids": [0, 1, 2, 3]
+          }
+        ]
+      }
+    },
+    {
+      "path": "vsh/vertexlit_and_unlit_generic_vs30.vcs",
+      "total_combos": 73728,
+      "dynamic_combos": 48,
+      "source_crc32": 1418205184,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "vs_3_0",
+      "coverage": {
+        "mode": "required",
+        "groups": [
+          {
+            "static_ids": [768, 770],
+            "dynamic_ids": [
+              0, 1, 2, 3, 4, 5, 6, 7,
+              8, 9, 10, 11, 12, 13, 14, 15,
+              16, 17, 18, 19, 20, 21, 22, 23,
+              24, 25, 26, 27, 28, 29, 30, 31,
+              32, 33, 34, 35, 36, 37, 38, 39,
+              40, 41, 42, 43, 44, 45, 46, 47
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "path": "vsh/bufferclearobeystencil_vs20.vcs",
+      "total_combos": 2,
+      "dynamic_combos": 1,
+      "source_crc32": 3834508489,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "vs_2_0",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0, 1],
+            "dynamic_ids": [0]
+          }
+        ]
+      }
+    },
+    {
+      "path": "vsh/eyeglint_vs20.vcs",
+      "total_combos": 1,
+      "dynamic_combos": 1,
+      "source_crc32": 1735848615,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "vs_2_0",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0],
+            "dynamic_ids": [0]
+          }
+        ]
+      }
+    },
+    {
+      "path": "psh/depthwrite_ps30.vcs",
+      "total_combos": 4,
+      "dynamic_combos": 2,
+      "source_crc32": 1451913343,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "ps_3_0",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0, 1],
+            "dynamic_ids": [0, 1]
+          }
+        ]
+      }
+    },
+    {
+      "path": "psh/vertexlit_and_unlit_generic_ps30.vcs",
+      "total_combos": 754974720,
+      "dynamic_combos": 32,
+      "source_crc32": 3281911284,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "ps_3_0",
+      "coverage": {
+        "mode": "required",
+        "groups": [
+          {
+            "static_ids": [16343040, 16343168],
+            "dynamic_ids": [0, 8, 16, 18, 24, 26]
+          }
+        ]
+      }
+    },
+    {
+      "path": "psh/bufferclearobeystencil_ps20b.vcs",
+      "total_combos": 1,
+      "dynamic_combos": 1,
+      "source_crc32": 2795705893,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "ps_2_b",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0],
+            "dynamic_ids": [0]
+          }
+        ]
+      }
+    },
+    {
+      "path": "psh/eyeglint_ps20b.vcs",
+      "total_combos": 1,
+      "dynamic_combos": 1,
+      "source_crc32": 4121912508,
+      "flags": 0,
+      "centroid_mask": 0,
+      "shader_model": "ps_2_b",
+      "coverage": {
+        "mode": "exact",
+        "groups": [
+          {
+            "static_ids": [0],
+            "dynamic_ids": [0]
+          }
+        ]
+      }
+    }
+  ]
+}

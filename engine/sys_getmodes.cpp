@@ -490,6 +490,42 @@ int CVideoMode_Common::FindVideoMode( int nDesiredWidth, int nDesiredHeight, boo
 //-----------------------------------------------------------------------------
 // Choose the actual video mode based on the available modes
 //-----------------------------------------------------------------------------
+#ifdef __ANDROID__
+//-----------------------------------------------------------------------------
+// The GL display database cannot enumerate real video modes on Android, so
+// any mode lookup degenerates to a bogus 640x480 default. The launcher
+// creates the window at native display size, so expose that one true mode
+// here: native size, landscape-oriented, with a sane fallback.
+//-----------------------------------------------------------------------------
+static void GetAndroidNativeVideoModeSize( int &nWidth, int &nHeight )
+{
+	nWidth = 0;
+	nHeight = 0;
+
+	if ( g_pLauncherMgr )
+	{
+		uint nW = 0, nH = 0, nHz = 0;
+		g_pLauncherMgr->GetNativeDisplayInfo( -1, nW, nH, nHz );
+		nWidth = ( int )nW;
+		nHeight = ( int )nH;
+	}
+
+	// the game is landscape-locked; keep the long side as width
+	if ( nHeight > nWidth )
+	{
+		int nTmp = nWidth;
+		nWidth = nHeight;
+		nHeight = nTmp;
+	}
+
+	if ( nWidth < 640 || nHeight < 480 )
+	{
+		nWidth = 1280;
+		nHeight = 720;
+	}
+}
+#endif
+
 void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeight, bool bWindowed, bool bNoWindowBorder )
 {
 	// Fill in vid structure for the mode
@@ -502,6 +538,11 @@ void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeigh
 		videoMode.width = nWidth;
 		videoMode.height = nHeight;
 	}
+
+#ifdef __ANDROID__
+	// one true mode: the native display size, landscape-oriented
+	GetAndroidNativeVideoModeSize( videoMode.width, videoMode.height );
+#endif
 
 	m_bWindowed = bWindowed;
 	m_nModeWidth = videoMode.width;
@@ -516,6 +557,15 @@ void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeigh
 bool CVideoMode_Common::CreateGameWindow( int nWidth, int nHeight, bool bWindowed, bool bNoWindowBorder )
 {
     COM_TimestampedLog( "CVideoMode_Common::Init  CreateGameWindow" );
+
+#ifdef __ANDROID__
+	// the engine cannot enumerate real display modes on Android; the window
+	// is created at native size by the launcher, so force the native mode
+	// here and in every later mode (re)selection
+	GetAndroidNativeVideoModeSize( nWidth, nHeight );
+	bWindowed = false;
+	bNoWindowBorder = true;
+#endif
 
     // This allows you to have a window of any size.
     // Requires you to set both width and height for the window and
@@ -2449,6 +2499,12 @@ bool CVideoMode_MaterialSystem::SetMode( int nWidth, int nHeight, bool bWindowed
 		videoMode.width = nWidth;
 		videoMode.height = nHeight;
 	}
+
+#ifdef __ANDROID__
+	// one true mode: the native display size, landscape-oriented; this also
+	// collapses any later SetMode from configs or gameui down to native
+	GetAndroidNativeVideoModeSize( videoMode.width, videoMode.height );
+#endif
 
     // update current video state
     MaterialSystem_Config_t config = *g_pMaterialSystemConfig;

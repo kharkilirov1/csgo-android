@@ -533,6 +533,10 @@ void CMatLightmaps::AllocateLightmapTexture( int lightmap )
 				imageFormat, 
 				1, 1, flags, debugName, TEXTURE_GROUP_LIGHTMAP );	// don't mipmap lightmaps
 
+#ifdef __ANDROID__
+			printf( "LMA: alloc page=%d %dx%d fmt=%d\n", lightmap, iWidth, iHeight, (int)imageFormat );
+#endif
+
 			// Load up the texture data
 			g_pShaderAPI->ModifyTexture( m_LightmapPageTextureHandles[lightmap] );
 			g_pShaderAPI->TexMinFilter( SHADER_TEXFILTERMODE_LINEAR );
@@ -761,9 +765,17 @@ bool CMatLightmaps::LockLightmap( int lightmap )
 	int pageHeight = m_pLightmapPages[lightmap].m_Height;
 	if (!g_pShaderAPI->TexLock( 0, 0, 0, 0,	pageWidth, pageHeight, m_LightmapPixelWriter ))
 	{
+#ifdef __ANDROID__
+		printf( "LML: FULLPAGE LOCK FAILED page=%d %dx%d\n", lightmap, pageWidth, pageHeight );
+#endif
 		Assert( 0 );
 		return false;
 	}
+#ifdef __ANDROID__
+	static int s_nFullLocks = 0;
+	if ( s_nFullLocks < 30 )
+		printf( "LML: fulllock #%d page=%d %dx%d\n", s_nFullLocks++, lightmap, pageWidth, pageHeight );
+#endif
 	m_nLockedLightmap = lightmap;
 	return true;
 }
@@ -2266,8 +2278,23 @@ void CMatLightmaps::UpdateLightmap( int lightmapPageID, int lightmapSize[2],
 			if (!g_pShaderAPI->TexLock( 0, 0, offsetIntoLightmapPage[0], offsetIntoLightmapPage[1],
 				lightmapSize[0] * uSize, lightmapSize[1], m_LightmapPixelWriter ))
 			{
+#ifdef __ANDROID__
+				printf( "LML: page=%d size=%dx%d LOCK FAILED\n", lightmapPageID, lightmapSize[0], lightmapSize[1] );
+#endif
 				return;
 			}
+#ifdef __ANDROID__
+			{
+				static int s_nLMLDumps = 0;
+				if ( pFloatImage && s_nLMLDumps < 24 )
+				{
+					s_nLMLDumps++;
+					printf( "LML: page=%d size=%dx%d off=%d,%d src[%d %d %d]\n", lightmapPageID,
+					lightmapSize[0], lightmapSize[1], offsetIntoLightmapPage[0], offsetIntoLightmapPage[1],
+					(int)(pFloatImage[0]*255.0f), (int)(pFloatImage[1]*255.0f), (int)(pFloatImage[2]*255.0f) );
+				}
+			}
+#endif
 		}
 		else if( lightmapPageID != m_nLockedLightmap )
 		{

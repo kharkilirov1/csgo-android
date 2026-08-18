@@ -3910,6 +3910,7 @@ void CShaderDeviceDx8::RefreshFrontBufferNonInteractive()
 //-----------------------------------------------------------------------------
 void CShaderDeviceDx8::Present()
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "SDP: CShaderDeviceDx8::Present #%d iconic=%d state=%d\n", s_n - 1, (int)IsIconic( (VD3DHWND)m_hWnd ), (int)m_DeviceState ); }
 	LOCK_SHADERAPI();
 
 	// flush the dynamic buffer and execute the per-draw call queuene
@@ -3945,6 +3946,7 @@ void CShaderDeviceDx8::Present()
 		g_pShaderAPI->CopyRenderTargetToTextureEx( m_NonInteractiveRefresh.m_Info.m_hTempFullscreenTexture, 0, NULL, NULL );
 	}
 
+		printf( "SDP2: gate iconic=%d valid=%d resizing=%d viewneq=%d pc=%d\n", (int)IsIconic((VD3DHWND)m_hWnd), (int)bValidPresent, (int)m_IsResizing, (int)(m_ViewHWnd != (VD3DHWND)m_hWnd), (int)IsPC() );
 	// If we're not iconified, try to present (without this check, we can flicker when Alt-Tabbed away)
 #ifdef _WIN32
 	if ( IsX360() || (IsIconic( ( HWND )m_hWnd ) == 0 && bValidPresent) )
@@ -3971,12 +3973,14 @@ void CShaderDeviceDx8::Present()
 			srcRect.bottom = viewport.m_nTopLeftY + viewport.m_nHeight;
 
 			MICRO_PROFILE( g_mp_Present );
+			printf( "SDP2: present branch1\n" );
 			hr = Dx9Device()->Present( &srcRect, &destRect, (VD3DHWND)m_ViewHWnd, 0 );
 		}
 		else
 		{
 			g_pShaderAPI->OwnGPUResources( false );
 			MICRO_PROFILE( g_mp_Present );
+			printf( "SDP2: present branch2\n" );
 			hr = Dx9Device()->Present( 0, 0, 0, 0 );
 		}
 	}

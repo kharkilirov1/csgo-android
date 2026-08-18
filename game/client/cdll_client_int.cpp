@@ -3,6 +3,7 @@
 //
 //===============================================================================
 
+#include <stdio.h>
 #include "cbase.h"
 #include <crtmemdebug.h>
 #include "vgui_int.h"
@@ -1460,6 +1461,7 @@ void CHLClient::Disconnect()
 
 int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGlobals )
 {
+	printf( "CLI: CHLClient::Init begin\n" );
 	STEAMWORKS_TESTSECRETALWAYS();
 	STEAMWORKS_SELFCHECK();
 
@@ -1516,7 +1518,11 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 #endif
 #if ( !defined( _GAMECONSOLE ) || defined( BINK_ENABLED_FOR_CONSOLE ) ) && defined( BINK_VIDEO )
 	if ( (bik = (IBik *)appSystemFactory(BIK_INTERFACE_VERSION, NULL)) == NULL )
+	{
+#if !defined( ANDROID )
 		return false;
+#endif
+	}
 #endif
 #if defined( QUICKTIME_VIDEO )
 	if ( (pQuicktime = (IQuickTime*)appSystemFactory( QUICKTIME_INTERFACE_VERSION, NULL)) == NULL )
@@ -1686,6 +1692,9 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 		COM_TimestampedLog( "InitGameSystems - End" );
 	}
 
+	printf( "CLI: before bInitSuccess check\n" );
+	if ( !bInitSuccess )
+		return false;
 
 #ifdef INFESTED_PARTICLES	// let the emitter cache load in our standard
 	g_ASWGenericEmitterCache.PrecacheTemplates();
@@ -1693,10 +1702,14 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 
 	COM_TimestampedLog( "C_BaseAnimating::InitBoneSetupThreadPool" );
 
+	printf( "CLI: bone pool begin\n" );
 	C_BaseAnimating::InitBoneSetupThreadPool();
+	printf( "CLI: bone pool end\n" );
 
 	// This is a fullscreen element, so only lives on slot 0!!!
+	printf( "CLI: closecaption begin\n" );
 	m_pHudCloseCaption = GET_FULLSCREEN_HUDELEMENT( CHudCloseCaption );
+	printf( "CLI: closecaption end\n" );
 
 #if defined( PORTAL2_PUZZLEMAKER )
 	// This must be called after all other VGui initialization (i.e after InitGameSystems)
@@ -1705,7 +1718,9 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 
 #if defined( CSTRIKE15 )
 	// Load the game types.
+	printf( "CLI: gametypes begin\n" );
 	g_pGameTypes->Initialize();
+	printf( "CLI: gametypes end\n" );
 #endif
 
 	//
@@ -1718,6 +1733,7 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 		g_BannedWords.InitFromFile( "banlist.res" );
 	}
 
+	printf( "CLI: Init finish\n" );
 	COM_TimestampedLog( "ClientDLL Init - Finish" );
 	return true;
 }
@@ -1727,12 +1743,15 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CGlobalVarsBase *pGloba
 //-----------------------------------------------------------------------------
 CEG_NOINLINE void CHLClient::PostInit()
 {
+	printf( "CLI: PostInit begin\n" );
 	CEG_PROTECT_VIRTUAL_FUNCTION( CHLCLient_PostInit );
 
-	Init_GCVs();
+	printf( "CLI: PostInit after GCVs\n" );
 
 	COM_TimestampedLog( "IGameSystem::PostInitAllSystems - Start" );
+	printf( "CLI: PostInitAllSystems begin\n" );
 	IGameSystem::PostInitAllSystems();
+	printf( "CLI: PostInitAllSystems end\n" );
 	COM_TimestampedLog( "IGameSystem::PostInitAllSystems - Finish" );
 
 	// Turn 7L rendering optimisations ON if "-rdropt" is specified on the command line

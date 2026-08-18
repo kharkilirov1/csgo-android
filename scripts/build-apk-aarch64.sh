@@ -5,8 +5,9 @@
 # runtime payload and fails if a module, ABI or transitive dependency is wrong.
 # ANDROID_HOME (or ANDROID_SDK_ROOT) must point at an SDK with platform 35.
 #
-# The result is android/csgo-launcher/app/build/outputs/apk/debug/app-debug.apk,
-# signed with the local debug key.
+# CSGO_BUILD_VARIANT selects debug (the default) or release. Release builds are
+# fail-closed and require the signing environment documented below; no key or
+# password is stored in this repository.
 #
 # NOTE: extras_dir.vpk contains only launcher/bootstrap support files. Maps,
 # models, materials and sounds still have to come from a CS:GO installation.
@@ -27,6 +28,82 @@ if [ -z "${ANDROID_HOME:-}" ] && [ -z "${ANDROID_SDK_ROOT:-}" ]; then
 	exit 1
 fi
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+CSGO_BUILD_VARIANT=${CSGO_BUILD_VARIANT:-debug}
+RELEASE_BOOTSTRAP_ASSETS=
+
+cleanup_release_bootstrap_assets() {
+	if [ -n "$RELEASE_BOOTSTRAP_ASSETS" ]; then
+		rm -f "$RELEASE_BOOTSTRAP_ASSETS/extras_dir.vpk"
+		rmdir "$RELEASE_BOOTSTRAP_ASSETS" 2>/dev/null || true
+	fi
+}
+trap cleanup_release_bootstrap_assets EXIT
+
+require_release_value() {
+	if [ -z "$2" ]; then
+		echo "error: release build requires $1" >&2
+		exit 1
+	fi
+}
+
+unset CSGO_RELEASE_PIPELINE
+
+case "$CSGO_BUILD_VARIANT" in
+	debug)
+		GRADLE_TASK=assembleDebug
+		APK_SUBDIR=debug
+		APK_NAME=app-debug.apk
+		;;
+	release)
+		GRADLE_TASK=assembleRelease
+		APK_SUBDIR=release
+		APK_NAME=app-release.apk
+		require_release_value CSGO_VERSION_CODE "${CSGO_VERSION_CODE:-}"
+		require_release_value CSGO_VERSION_NAME "${CSGO_VERSION_NAME:-}"
+		require_release_value CSGO_RELEASE_KEYSTORE "${CSGO_RELEASE_KEYSTORE:-}"
+		require_release_value CSGO_RELEASE_KEYSTORE_PASSWORD "${CSGO_RELEASE_KEYSTORE_PASSWORD:-}"
+		require_release_value CSGO_RELEASE_KEY_ALIAS "${CSGO_RELEASE_KEY_ALIAS:-}"
+		require_release_value CSGO_RELEASE_KEY_PASSWORD "${CSGO_RELEASE_KEY_PASSWORD:-}"
+		require_release_value CSGO_RELEASE_CERT_SHA256 "${CSGO_RELEASE_CERT_SHA256:-}"
+		case "$CSGO_VERSION_CODE" in
+			*[!0-9]*|0) echo "error: CSGO_VERSION_CODE must be a positive integer" >&2; exit 1 ;;
+		esac
+		if [ "$CSGO_VERSION_CODE" -gt 2100000000 ]; then
+			echo "error: CSGO_VERSION_CODE exceeds Android's 2100000000 limit" >&2
+			exit 1
+		fi
+		if ! printf '%s\n' "$CSGO_VERSION_NAME" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z._+-]{0,99}$'; then
+			echo "error: CSGO_VERSION_NAME must be 1-100 safe ASCII version characters" >&2
+			exit 1
+		fi
+		if [ ! -f "$CSGO_RELEASE_KEYSTORE" ]; then
+			echo "error: release keystore does not exist: $CSGO_RELEASE_KEYSTORE" >&2
+			exit 1
+		fi
+		if ! command -v python3 >/dev/null 2>&1; then
+			echo "error: python3 is required to sanitize release bootstrap assets" >&2
+			exit 1
+		fi
+		export CSGO_RELEASE_PIPELINE=android-release-wrapper-v1
+		RELEASE_BOOTSTRAP_ASSETS="$LAUNCHER/app/build/generated/releaseBootstrapAssets"
+		mkdir -p "$RELEASE_BOOTSTRAP_ASSETS"
+		unexpected_release_asset=$(find "$RELEASE_BOOTSTRAP_ASSETS" -mindepth 1 -maxdepth 1 \
+			! \( -type f -name extras_dir.vpk \) -print -quit)
+		if [ -n "$unexpected_release_asset" ]; then
+			echo "error: unexpected generated release asset: $unexpected_release_asset" >&2
+			exit 1
+		fi
+		rm -f "$RELEASE_BOOTSTRAP_ASSETS/extras_dir.vpk"
+		python3 "$SRC/scripts/sanitize_android_release_vpk.py" \
+			"$LAUNCHER/assets/extras_dir.vpk" \
+			"$RELEASE_BOOTSTRAP_ASSETS/extras_dir.vpk" --json
+		export CSGO_RELEASE_BOOTSTRAP_ASSETS="$RELEASE_BOOTSTRAP_ASSETS"
+		;;
+	*)
+		echo "error: CSGO_BUILD_VARIANT must be debug or release" >&2
+		exit 1
+		;;
+esac
 
 case "$NDK" in
 	/*) ;;
@@ -116,15 +193,15 @@ READELF="$READELF" "$SRC/scripts/verify-android-aarch64-libs.sh" "$JNI"
 
 printf 'sdk.dir=%s\n' "$SDK" > "$LAUNCHER/local.properties"
 
-echo "==> gradle assembleDebug"
+echo "==> gradle $GRADLE_TASK"
 cd "$LAUNCHER"
 if [ ! -f ./gradlew ] || [ ! -f ./gradle/wrapper/gradle-wrapper.jar ]; then
 	echo "error: Gradle wrapper is incomplete" >&2
 	exit 1
 fi
-./gradlew --no-daemon --stacktrace assembleDebug
+./gradlew --no-daemon --stacktrace "$GRADLE_TASK"
 
-APK="$LAUNCHER/app/build/outputs/apk/debug/app-debug.apk"
+APK="$LAUNCHER/app/build/outputs/apk/$APK_SUBDIR/$APK_NAME"
 if [ ! -f "$APK" ]; then
 	echo "error: Gradle did not produce $APK" >&2
 	exit 1
@@ -146,6 +223,13 @@ for library in $ANDROID_REQUIRED_LIBRARIES; do
 		exit 1
 	fi
 done
+
+if [ "$CSGO_BUILD_VARIANT" = release ]; then
+	APKSIGNER="$BUILD_TOOLS/apksigner" \
+	ZIPALIGN="$BUILD_TOOLS/zipalign" \
+	AAPT2="$BUILD_TOOLS/aapt2" \
+		sh "$SRC/scripts/verify-android-release-apk.sh" "$APK"
+fi
 
 echo
 echo "==> $APK ($(ls -lh "$APK" | awk '{print $5}'))"

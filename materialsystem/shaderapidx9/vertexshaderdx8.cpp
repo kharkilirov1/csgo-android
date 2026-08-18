@@ -33,6 +33,7 @@ typedef int SOCKET;
 #include "tier1/UtlStringMap.h"
 #include "locald3dtypes.h"
 #include "shaderapidx8_global.h"
+#include "imeshdx8.h"
 #include "recording.h"
 #include "tier0/vprof.h"
 #include "materialsystem/imaterialsystem.h"
@@ -1192,10 +1193,14 @@ static const char *GetShaderSourcePath( void )
 			}
 #			else
 			{
+#ifdef ANDROID
+				Q_strncpy( shaderDir, "/storage/emulated/0/Download/csgo/csgo/shaders", MAX_PATH );
+#else
 				Q_strncpy( shaderDir, __FILE__, MAX_PATH );
 				Q_StripFilename( shaderDir );
 				Q_StripLastDir( shaderDir, MAX_PATH );
 				Q_strncat( shaderDir, "stdshaders", MAX_PATH, COPY_ALL_CHARACTERS );
+#endif
 			}
 #			endif
 		}
@@ -1417,7 +1422,7 @@ const CShaderManager::ShaderCombos_t *CShaderManager::FindOrCreateShaderCombos( 
 	CUtlInplaceBuffer bffr( 0, 0, CUtlInplaceBuffer::TEXT_BUFFER );
 	
 	bool bOpenResult = ReadTextFileWithIncludes( filename, NULL, bffr );
-	
+
 	if ( bOpenResult )
 	{
 		NULL;
@@ -2637,6 +2642,21 @@ bool CShaderManager::LoadAndCreateShaders_Dynamic( ShaderLookup_t &lookup, bool 
 FileHandle_t CShaderManager::OpenFileAndLoadHeader( const char *pFileName, ShaderHeader_t *pHeader )
 {
 	FileHandle_t fp = g_pFullFileSystem->Open( pFileName, "rb", "PLATFORM" );
+#ifdef ANDROID
+	// Android's loose PLATFORM search path can remain negatively cached after
+	// external resources are installed. Resolve the same path explicitly from
+	// the launcher-provided, canonical game root before declaring it missing.
+	if ( fp == FILESYSTEM_INVALID_HANDLE )
+	{
+		const char *pGamePath = getenv( "VALVE_GAME_PATH" );
+		if ( pGamePath && pGamePath[0] )
+		{
+			char absolutePath[MAX_PATH];
+			Q_snprintf( absolutePath, sizeof( absolutePath ), "%s/platform/%s", pGamePath, pFileName );
+			fp = g_pFullFileSystem->Open( absolutePath, "rb", NULL );
+		}
+	}
+#endif
 	if ( fp == FILESYSTEM_INVALID_HANDLE )
 	{
 		return FILESYSTEM_INVALID_HANDLE;
@@ -3244,12 +3264,12 @@ bool CShaderManager::LoadAndCreateShaders( ShaderLookup_t &lookup, bool bVertexS
 
 		// try the vsh/psh dir first
 		char filename[MAX_PATH];
-		Q_snprintf( filename, MAX_PATH, "shaders\\%s\\%s" SHADER_FNAME_EXTENSION, bVertexShader ? "vsh" : "psh", pName );
+		Q_snprintf( filename, MAX_PATH, "shaders/%s/%s" SHADER_FNAME_EXTENSION, bVertexShader ? "vsh" : "psh", pName );
 		hFile = OpenFileAndLoadHeader( filename, pHeader );
 		if ( hFile == FILESYSTEM_INVALID_HANDLE )
 		{
 			// next, try the fxc dir
-			Q_snprintf( filename, MAX_PATH, "shaders\\fxc\\%s" SHADER_FNAME_EXTENSION, pName );
+			Q_snprintf( filename, MAX_PATH, "shaders/fxc/%s" SHADER_FNAME_EXTENSION, pName );
 			hFile = OpenFileAndLoadHeader( filename, pHeader );
 #ifdef DYNAMIC_SHADER_COMPILE
 			lookup.m_nVcsCrc32 = pHeader->m_nSourceCRC32;
@@ -4081,6 +4101,18 @@ void* CShaderManager::GetCurrentPixelShader()
 //-----------------------------------------------------------------------------
 void CShaderManager::SetVertexShaderState_Internal( HardwareShader_t shader, DataCacheHandle_t hCachedShader )
 {
+#ifdef ANDROID
+	{
+		// direct calls elsewhere (RefreshFrontBufferNonInteractive cleanup) reset the device shader
+		// behind our back; always re-bind instead of relying on the m_HardwareVertexShader cache
+		RECORD_COMMAND( DX8_SET_VERTEX_SHADER, 1 );
+		RECORD_INT( ( int )shader ); // hack hack hack
+
+		VPROF_INCREMENT_GROUP_COUNTER( "vertex shader change", COUNTER_GROUP_DEFAULT, 1 );
+		Dx9Device()->SetVertexShader( (IDirect3DVertexShader9*)shader );
+		m_HardwareVertexShader = shader;
+	}
+#else
 	if ( m_HardwareVertexShader != shader )
 	{
 	RECORD_COMMAND( DX8_SET_VERTEX_SHADER, 1 );
@@ -4090,6 +4122,7 @@ void CShaderManager::SetVertexShaderState_Internal( HardwareShader_t shader, Dat
 	Dx9Device()->SetVertexShader( (IDirect3DVertexShader9*)shader );
 	m_HardwareVertexShader = shader;
 	}
+#endif
 }
 
 void CShaderManager::BindVertexShader( VertexShaderHandle_t hVertexShader )
@@ -4110,15 +4143,15 @@ void CShaderManager::SetVertexShader( VertexShader_t shader )
 		SetVertexShaderState( 0 );
 		return;
 	}
-
 	int vshIndex = m_nVertexShaderIndex;
-	Assert( vshIndex >= 0 );
-	if( vshIndex < 0 )
-	{
-		vshIndex = 0;
-	}
-
 	ShaderLookup_t &vshLookup = m_VertexShaderDict[shader];
+	Assert( vshIndex >= 0 && vshIndex < vshLookup.m_ShaderStaticCombos.m_nCount );
+	if ( vshIndex < 0 || vshIndex >= vshLookup.m_ShaderStaticCombos.m_nCount )
+	{
+		SetVertexShaderState( 0 );
+		DevWarning( "***** Invalid vertex shader index (out of range) for %s (%d of %d).\n", m_ShaderSymbolTable.String( vshLookup.m_Name ), vshIndex, vshLookup.m_ShaderStaticCombos.m_nCount );
+		return;
+	}
 //	DevWarning( "vsh: %s static: %d dynamic: %d\n", m_ShaderSymbolTable.String( vshLookup.m_Name ),
 //		vshLookup.m_nStaticIndex, m_nVertexShaderIndex );
 
@@ -4212,7 +4245,7 @@ void CShaderManager::SetVertexShader( VertexShader_t shader )
 void CShaderManager::SetPixelShaderState_Internal( HardwareShader_t shader, DataCacheHandle_t hCachedShader )
 {
 	if ( m_HardwarePixelShader != shader )
-	{		
+	{
 	VPROF_INCREMENT_GROUP_COUNTER( "pixel shader change", COUNTER_GROUP_DEFAULT, 1 );
 	Dx9Device()->SetPixelShader( (IDirect3DPixelShader*)shader );		
 	m_HardwarePixelShader = shader;
@@ -4248,11 +4281,10 @@ void CShaderManager::SetPixelShader( PixelShader_t shader )
 		SetPixelShaderState( 0 );
 		return;
 	}
-
 	int pshIndex = m_nPixelShaderIndex;
-	Assert( pshIndex >= 0 );
 	ShaderLookup_t &pshLookup = m_PixelShaderDict[shader];
-	if ( pshIndex > pshLookup.m_ShaderStaticCombos.m_nCount )
+	Assert( pshIndex >= 0 && pshIndex < pshLookup.m_ShaderStaticCombos.m_nCount );
+	if ( pshIndex < 0 || pshIndex >= pshLookup.m_ShaderStaticCombos.m_nCount )
 	{
 		SetPixelShaderState( 0 );
 		DevWarning( "***** Invalid pixel shader index (out of range) for %s (%d of %d).\n", m_ShaderSymbolTable.String( pshLookup.m_Name ), pshIndex, pshLookup.m_ShaderStaticCombos.m_nCount );
@@ -4421,14 +4453,38 @@ void CShaderManager::DestroyPixelShader( PixelShader_t pixelShader )
 
 HardwareShader_t CShaderManager::GetVertexShader( VertexShader_t vs, int dynIdx )
 {
+	if ( vs == (VertexShader_t)INVALID_SHADER ||
+		vs == m_VertexShaderDict.InvalidIndex() )
+	{
+		return INVALID_HARDWARE_SHADER;
+	}
+
 	ShaderLookup_t &vshLookup = m_VertexShaderDict[vs];
+	if ( !vshLookup.m_ShaderStaticCombos.m_pHardwareShaders ||
+		dynIdx < 0 || dynIdx >= vshLookup.m_ShaderStaticCombos.m_nCount )
+	{
+		return INVALID_HARDWARE_SHADER;
+	}
+
 	HardwareShader_t dxshader = vshLookup.m_ShaderStaticCombos.m_pHardwareShaders[dynIdx];
 	return dxshader;
 }
 
 HardwareShader_t CShaderManager::GetPixelShader( PixelShader_t ps, int dynIdx )
 {
+	if ( ps == (PixelShader_t)INVALID_SHADER ||
+		ps == m_PixelShaderDict.InvalidIndex() )
+	{
+		return INVALID_HARDWARE_SHADER;
+	}
+
 	ShaderLookup_t &pshLookup = m_PixelShaderDict[ps];
+	if ( !pshLookup.m_ShaderStaticCombos.m_pHardwareShaders ||
+		dynIdx < 0 || dynIdx >= pshLookup.m_ShaderStaticCombos.m_nCount )
+	{
+		return INVALID_HARDWARE_SHADER;
+	}
+
 	HardwareShader_t dxshader = pshLookup.m_ShaderStaticCombos.m_pHardwareShaders[dynIdx];
 	return dxshader;
 }

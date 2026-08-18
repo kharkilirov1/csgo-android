@@ -994,6 +994,14 @@ void S_Init( void )
 		return;
 	}
 
+#ifdef ANDROID
+	// VAudioInit / S_Startup hang on Android (no Miles audio device); use null device
+	g_AudioDevice = Audio_GetNullDevice();
+	TRACEINIT( audiosourcecache->Init( host_parms.memsize >> 2 ), audiosourcecache->Shutdown() );
+	DevMsg( "Sound Initialization: null device (Android)\n" );
+	return;
+#endif
+
 	DevMsg( "Sound Initialization: Start\n" );
 
 	// KDB: init sentence array

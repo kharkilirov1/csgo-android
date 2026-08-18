@@ -181,9 +181,11 @@ void SCR_EndLoadingPlaque( void )
 #endif
 
 			g_pMatchFramework->GetEventsSubscription()->BroadcastEvent( kv );
-			return;
+	printf( "SUR: return@orig184\n", 184 );
+	return;
 		}
-		return;
+	printf( "SUR: return@orig186\n", 186 );
+	return;
 	}
 	else if ( gfExtendedError )
 	{
@@ -208,6 +210,7 @@ void SCR_EndLoadingPlaque( void )
 //-----------------------------------------------------------------------------
 void SCR_UpdateScreen( void )
 {
+	printf( "SUR: enter\n" );
 	R_StudioCheckReinitLightingCache();
 
 	// Always force the Gamma Table to be rebuilt. Otherwise,
@@ -219,7 +222,8 @@ void SCR_UpdateScreen( void )
 	if ( scr_nextdrawtick != 0 )
 	{
 		if ( host_tickcount < scr_nextdrawtick )
-			return;
+	printf( "SUR: return@orig222\n", 222 );
+	return;
 
 		scr_nextdrawtick = 0;
 	}
@@ -245,13 +249,15 @@ void SCR_UpdateScreen( void )
 			Shader_SwapBuffers();
 		}
 
-		return;
+	printf( "SUR: return@orig248\n", 248 );
+	return;
 	}
 
 	if ( !scr_initialized || !con_initialized )
 	{
 		// not initialized yet
-		return;				
+	printf( "SUR: return@orig254\n", 254 );
+	return;
 	}
 
 	// Let demo system overwrite view origin/angles during playback

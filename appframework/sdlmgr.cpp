@@ -1131,6 +1131,8 @@ void CSDLMgr::OnFrameRendered()
 #if defined( DX_TO_GL_ABSTRACTION )
 void CSDLMgr::ShowPixels( CShowPixelsParams *params )
 {
+	static int s_nSwap = 0;
+	if ( ( s_nSwap++ % 300 ) == 0 ) printf( "SWP: ShowPixels #%d\n", s_nSwap - 1 );
 	SDLAPP_FUNC;
 
 	if (params->m_onlySyncView)

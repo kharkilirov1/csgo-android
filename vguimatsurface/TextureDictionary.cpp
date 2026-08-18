@@ -89,7 +89,7 @@ public:
 
  	bool IsReference() const { return m_Flags & TEXTURE_IS_REFERENCE; }
 
-	void SetTextureRGBA( const char* rgba, int wide, int tall, ImageFormat format, bool bFixupTextCoordsForDimensions );
+	void SetTextureRGBA( const char* rgba, int wide, int tall, ImageFormat format, ETextureScaling eScaling );
 	void SetSubTextureRGBA( int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall );
 	void SetSubTextureRGBAEx( int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall, ImageFormat imageFormat );
 	void UpdateSubTextureRGBA( int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall, ImageFormat imageFormat );
@@ -135,7 +135,6 @@ public:
 
 	// Create, destroy textures
 	int	CreateTexture( bool procedural = false );
-	int CreateTextureByTexture( ITexture *pTexture, bool procedural = true ) OVERRIDE;
 	void DestroyTexture( int id );
 	void DestroyAllTextures();
 
@@ -149,16 +148,21 @@ public:
 
 	// Texture info
 	IMaterial *GetTextureMaterial( int id );
+	HRenderTexture GetTextureHandle( int textureId );
 	void GetTextureSize(int id, int& iWide, int& iTall );
 	void GetTextureTexCoords( int id, float &s0, float &t0, float &s1, float &t1 );
 
 	void SetTextureRGBA( int id, const char* rgba, int wide, int tall );
-	void SetTextureRGBAEx( int id, const char* rgba, int wide, int tall, ImageFormat format, bool bFixupTextCoordsForDimensions );
+	void SetTextureRGBAEx( int id, const char* rgba, int wide, int tall, ImageFormat format, ETextureScaling eScaling );
 	void SetSubTextureRGBA( int id, int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall );
 	void SetSubTextureRGBAEx( int id, int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall, ImageFormat imageFormat );
 	void UpdateSubTextureRGBA( int id, int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall, ImageFormat imageFormat );
 
 	int	FindTextureIdForTextureFile( char const *pFileName );
+
+	virtual void BindTextureToMaterial2Reference( int id, int referenceId, IMaterial2 *pMaterial ) { Assert( 0 ); }
+	virtual void BindTextureToMaterial2( int id, IMaterial2 *pMaterial ) { Assert( 0 ); }
+	virtual IMaterial2 *GetTextureMaterial2( int id ) { Assert( 0 ); return NULL; }
 
 public:
 	CMatSystemTexture	*GetTexture( int id );
@@ -421,7 +425,7 @@ void CMatSystemTexture::ReleaseRegen( void )
 	}
 }
 
-void CMatSystemTexture::SetTextureRGBA( const char *rgba, int wide, int tall, ImageFormat format, bool bFixupTextCoords )
+void CMatSystemTexture::SetTextureRGBA( const char *rgba, int wide, int tall, ImageFormat format, ETextureScaling eScaling )
 {
 	Assert( IsProcedural() );
 	if ( !IsProcedural() )
@@ -458,15 +462,21 @@ void CMatSystemTexture::SetTextureRGBA( const char *rgba, int wide, int tall, Im
 		Q_snprintf( pTextureName, sizeof( pTextureName ), "__vgui_texture_%d", nTextureId );
 		++nTextureId;
 
+		int textureFlags = TEXTUREFLAGS_CLAMPS | TEXTUREFLAGS_CLAMPT |
+			TEXTUREFLAGS_NOMIP | TEXTUREFLAGS_NOLOD |
+			TEXTUREFLAGS_PROCEDURAL | TEXTUREFLAGS_SINGLECOPY;
+		if ( eScaling == k_ETextureScalingPointSample )
+		{
+			textureFlags |= TEXTUREFLAGS_POINTSAMPLE;
+		}
+
 		ITexture *pTexture = g_pMaterialSystem->CreateProceduralTexture( 
 			pTextureName,
 			TEXTURE_GROUP_VGUI,
 			width,
 			height,
 			format,
-			TEXTUREFLAGS_CLAMPS | TEXTUREFLAGS_CLAMPT |
-			TEXTUREFLAGS_NOMIP | TEXTUREFLAGS_NOLOD |
-			TEXTUREFLAGS_PROCEDURAL | TEXTUREFLAGS_SINGLECOPY );
+			textureFlags );
 
 		KeyValues *pVMTKeyValues = new KeyValues( "UnlitGeneric" );
 		pVMTKeyValues->SetInt( "$vertexcolor", 1 );
@@ -485,7 +495,7 @@ void CMatSystemTexture::SetTextureRGBA( const char *rgba, int wide, int tall, Im
 		SetMaterial( pMaterial );
 		m_iInputTall = tall;
 		m_iInputWide = wide;
-		if ( bFixupTextCoords && ( wide != width || tall != height ) )
+		if ( wide != width || tall != height )
 		{
 			m_s1 = (double)wide / width;
 			m_t1 = (double)tall / height;
@@ -778,17 +788,6 @@ int	CTextureDictionary::CreateTexture( bool procedural /*=false*/ )
 	return idx;
 }
 
-int CTextureDictionary::CreateTextureByTexture( ITexture *pTexture, bool procedural /*= true*/ )
-{
-	int idx = m_Textures.AddToTail();
-	CMatSystemTexture &texture = m_Textures[idx];
-	texture.SetProcedural( procedural );
-	texture.SetId( idx );
-	texture.SetTexture( pTexture );
-
-	return idx;
-}
-
 void CTextureDictionary::DestroyTexture( int id )
 {
 	if ( m_Textures.Count() <= 1 )
@@ -815,10 +814,10 @@ void CTextureDictionary::DestroyAllTextures()
 
 void CTextureDictionary::SetTextureRGBA( int id, const char* rgba, int wide, int tall )
 {
-	SetTextureRGBAEx( id, rgba, wide, tall, IMAGE_FORMAT_RGBA8888, false );
+	SetTextureRGBAEx( id, rgba, wide, tall, IMAGE_FORMAT_RGBA8888, k_ETextureScalingPointSample );
 }
 
-void CTextureDictionary::SetTextureRGBAEx( int id, const char* rgba, int wide, int tall, ImageFormat format, bool bFixupTextCoordsForDimensions )
+void CTextureDictionary::SetTextureRGBAEx( int id, const char* rgba, int wide, int tall, ImageFormat format, ETextureScaling eScaling )
 {
 	if (!IsValidId(id))
 	{
@@ -826,7 +825,7 @@ void CTextureDictionary::SetTextureRGBAEx( int id, const char* rgba, int wide, i
 		return;
 	}
 	CMatSystemTexture &texture = m_Textures[id];
-	texture.SetTextureRGBA( rgba, wide, tall, format, bFixupTextCoordsForDimensions );
+	texture.SetTextureRGBA( rgba, wide, tall, format, eScaling );
 }
 
 void CTextureDictionary::SetSubTextureRGBA( int id, int drawX, int drawY, unsigned const char *rgba, int subTextureWide, int subTextureTall )
@@ -940,6 +939,11 @@ IMaterial *CTextureDictionary::GetTextureMaterial( int id )
 		return NULL;
 
 	return m_Textures[id].GetMaterial();
+}
+
+HRenderTexture CTextureDictionary::GetTextureHandle( int textureId )
+{
+	return RENDER_TEXTURE_HANDLE_INVALID;
 }
 
 

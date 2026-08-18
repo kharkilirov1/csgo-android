@@ -1487,6 +1487,20 @@ CGameMenu *CBaseModPanel::RecursiveLoadGameMenu(KeyValues *datafile)
 		const char *cmd = dat->GetString("command", NULL);
 		const char *name = dat->GetString("name", label);
 
+#if defined( ANDROID )
+		// The Android content set has the CS:GO SFUI localization files, but not
+		// gameui_english.txt. Map the four legacy GameMenu labels onto equivalent
+		// CS:GO tokens instead of displaying the unresolved #GameUI_* keys.
+		if ( !Q_stricmp( label, "#GameUI_GameMenu_FindServers" ) )
+			label = "#SFUI_PlayMenu_BrowseServersButton";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_CreateServer" ) )
+			label = "#SFUI_Start_ListenServer_Workshop_Map";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_Options" ) )
+			label = "#SFUI_MainMenu_HelpButton";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_Quit" ) )
+			label = "#SFUI_MainMenu_QuitGameButton";
+#endif
+
 		if ( cmd && !Q_stricmp( cmd, "OpenFriendsDialog" ) && bSteamCommunityFriendsVersion )
 			continue;
 

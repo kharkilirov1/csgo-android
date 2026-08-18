@@ -20,6 +20,8 @@ def build(bld):
 		'mdlcache.cpp',
 		'mdlcombine.cpp',
 		'vtfcombine.cpp',
+		'resourceaccesscontrol.cpp',
+		'precachesystem.cpp',
 		'../public/studio.cpp',
 		'../public/studio_virtualmodel.cpp',
 		'../common/studiobyteswap.cpp',

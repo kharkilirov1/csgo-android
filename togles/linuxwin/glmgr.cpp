@@ -2206,8 +2206,14 @@ ConVar glm_literefresh_capslock( "glm_literefresh_capslock", "0" );
 
 extern ConVar gl_blitmode;
 
+int g_nLiveTex = 0, g_nLiveFBO = 0, g_nLiveBuf = 0, g_nLiveProg = 0;
+long long g_nLiveBufBytes = 0;
+long long g_nLiveTexBytes = 0;
+char g_lastTexLabel[64] = {0};
+char g_lastBufKind[64] = {0};
 void GLMContext::Present( CGLMTex *tex )
 {
+	{ static int s_n = 0; if ( ( s_n % 600 ) == 0 ) printf( "GLCNT: presents=%d liveTex=%d texMB=%lld lastTex=%.48s liveFBO=%d liveBuf=%d bufMB=%lld lastBuf=%.48s\n", s_n, g_nLiveTex, g_nLiveTexBytes >> 20, g_lastTexLabel, g_nLiveFBO, g_nLiveBuf, g_nLiveBufBytes >> 20, g_lastBufKind ); s_n++; }
 	GLM_FUNC;
 	
 	{
@@ -4915,6 +4921,7 @@ static inline uint GetDataTypeSizeInBytes( GLenum dataType )
 
 void GLMContext::DrawRangeElementsNonInline( GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices, uint baseVertex, CGLMBuffer *pIndexBuf )
 {
+	{ static int s_nDRE = 0; if ( s_nDRE < 30 ) printf( "DRE: noninline #%d mode=%d count=%d\n", s_nDRE++, mode, count ); }
 #if GLMDEBUG
 	GLM_FUNC;
 #else

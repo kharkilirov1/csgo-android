@@ -2913,6 +2913,8 @@ HRESULT IDirect3DDevice9::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixe
 		CUtlBuffer transbuf( 3000, numTranslations * maxTranslationSize, CUtlBuffer::TEXT_BUFFER );
 		CUtlBuffer tempbuf( 3000, maxTranslationSize, CUtlBuffer::TEXT_BUFFER );
 
+		if ( pFunction )
+		{
 		if ( g_useASMTranslations )
 		{
 			// no extra tag needed for ARBfp, just use the !!ARBfp marker
@@ -2959,7 +2961,8 @@ HRESULT IDirect3DDevice9::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixe
 			transbuf.PutString( (char*)tempbuf.Base() );
 			transbuf.PutString( "\n\n" );	// whitespace
 		}
-		
+		} // if ( pFunction ) - translation skipped when no bytecode
+
 		if ( bVertexShader )
 		{
 			// don't cross the streams
@@ -2968,6 +2971,28 @@ HRESULT IDirect3DDevice9::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixe
 		}
 		else
 		{
+		#ifdef ANDROID
+			if ( transbuf.TellPut() < 64 )
+			{
+				// translation produced nothing (no .vcs bytecode); use fallback textured-quad GLSL
+				transbuf.Clear();
+				transbuf.PutString(
+					"//GLSLfp\n"
+					"//SAMPLERMASK-8000\n"
+					"//HIGHWATER-30\n"
+					"#version 300 es\n"
+					"precision mediump float;\n"
+					"in vec4 otex;\n"
+					"out vec4 _gl_FragColor;\n"
+					"uniform vec4 pc[31];\n"
+					"uniform sampler2D sampler15;\n"
+					"void main()\n"
+					"{\n"
+					"vec4 r0 = texture( sampler15, otex.xy );\n"
+					"_gl_FragColor = r0;\n"
+					"}\n" );
+			}
+		#endif
 			IDirect3DPixelShader9 *newprog = new IDirect3DPixelShader9;
 					
 			newprog->m_pixProgram = m_ctx->NewProgram( kGLMFragmentProgram, (char *)transbuf.Base() ) ;
@@ -3117,6 +3142,8 @@ HRESULT IDirect3DDevice9::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVe
 		CUtlBuffer transbuf( 1000, numTranslations * maxTranslationSize, CUtlBuffer::TEXT_BUFFER );
 		CUtlBuffer tempbuf( 1000, maxTranslationSize, CUtlBuffer::TEXT_BUFFER );
 
+		if ( pFunction )
+		{
 		if ( g_useASMTranslations )
 		{
 			// no extra tag needed for ARBvp, just use the !!ARBvp marker
@@ -3171,7 +3198,8 @@ HRESULT IDirect3DDevice9::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVe
 			transbuf.PutString( (char*)tempbuf.Base() );
 			transbuf.PutString( "\n\n" );	// whitespace
 		}
-		
+		} // if ( pFunction ) - translation skipped when no bytecode
+
 		if ( !bVertexShader )
 		{
 			// don't cross the streams
@@ -3180,7 +3208,30 @@ HRESULT IDirect3DDevice9::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVe
 		}
 		else
 		{
-			IDirect3DVertexShader9 *newprog = new IDirect3DVertexShader9;
+		#ifdef ANDROID
+				if ( transbuf.TellPut() < 64 )
+				{
+					// no .vcs bytecode available; use fallback transform+texcoord GLSL
+					transbuf.Clear();
+					transbuf.PutString(
+						"//GLSLvp\n"
+						"//HIGHWATER-4\n"
+						"//HIGHWATERBONE-0\n"
+						"//ATTRIBMAP-0001xxxxxxxxxxxxxxxxxxxxxxxxxxxx\n"
+						"#version 300 es\n"
+						"precision mediump float;\n"
+						"in vec4 v0;\n"
+						"in vec4 v1;\n"
+						"uniform vec4 pc[31];\n"
+						"out vec4 otex;\n"
+						"void main()\n"
+						"{\n"
+						"gl_Position = pc[0] * v0;\n"
+						"otex = v1;\n"
+						"}\n" );
+				}
+		#endif
+				IDirect3DVertexShader9 *newprog = new IDirect3DVertexShader9;
 
 			newprog->m_device = this;
 					

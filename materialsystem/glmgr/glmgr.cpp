@@ -2201,6 +2201,14 @@ void	GLMContext::Present( CGLMTex *tex )
 	MakeCurrent();
 
 	bool newRefreshMode = false;
+#ifdef __ANDROID__
+	// On Android the CocoaMgr blit path is compiled out (OSX only), so the
+	// resolve-to-GL_BACK must happen here in GLM via Blit2, otherwise the
+	// backbuffer keeps stale contents and the screen never updates.
+	newRefreshMode = ( gl_blitmode.GetInt() != 0 );
+#else
+	newRefreshMode = ( m_oneCtxEnable && (gl_blitmode.GetInt() != 0) );
+#endif
 	// two ways to go:
 	
 	// old school, do the resolve, had the tex down to cocoamgr to actually blit.

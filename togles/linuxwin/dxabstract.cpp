@@ -2021,6 +2021,8 @@ HRESULT IDirect3DQuery9::GetData(void* pData,DWORD dwSize,DWORD dwGetDataFlags)
 
 HRESULT IDirect3DDevice9::CreateVertexBuffer(UINT Length,DWORD Usage,DWORD FVF,D3DPOOL Pool,IDirect3DVertexBuffer9** ppVertexBuffer,VD3DHANDLE* pSharedHandle)
 {
+	{ static int s_n = 0; if ( ( s_n++ % 100 ) == 0 && Length < 65536 ) printf( "VBC: len=%d usage=0x%x pool=%d ra0=%p ra1=%p ra2=%p\n", Length, Usage, Pool, __builtin_return_address(0), __builtin_return_address(1), __builtin_return_address(2) ); }
+
 	GL_BATCH_PERF_CALL_TIMER;
 	GLMPRINTF(( ">-A- IDirect3DDevice9::CreateVertexBuffer" ));
 	Assert( m_ctx->m_nCurOwnerThreadId == ThreadGetCurrentId() );
@@ -2951,6 +2953,7 @@ ConVar dxa_nullrefresh_capslock( "dxa_nullrefresh_capslock", "0" );
 
 HRESULT IDirect3DDevice9::Present(CONST RECT* pSourceRect,CONST RECT* pDestRect,VD3DHWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion)
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "PRS: D3D Present #%d\n", s_n - 1 ); }
 	GL_BATCH_PERF( g_nTotalD3DCalls++; )
 	GL_PUBLIC_ENTRYPOINT_CHECKS( this );
 			
@@ -3924,10 +3927,13 @@ HRESULT IDirect3DDevice9::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixe
 			}
 		}
 
-		g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslPixelShaderOptions, nShadowDepthSamplerMask, nCentroidMask, pDebugLabel );
+		if ( pFunction )
+		{
+			g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslPixelShaderOptions, nShadowDepthSamplerMask, nCentroidMask, pDebugLabel );
 			
-		transbuf.PutString( (char*)tempbuf.Base() );
-		transbuf.PutString( "\n\n" );	// whitespace
+			transbuf.PutString( (char*)tempbuf.Base() );
+			transbuf.PutString( "\n\n" );	// whitespace
+		}
 				
 		if ( bVertexShader )
 		{
@@ -4206,10 +4212,13 @@ HRESULT IDirect3DDevice9::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVe
 			glslVertexShaderOptions |= D3DToGL_OptionGenerateBoneUniformBuffer;
 		}
 
-		g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslVertexShaderOptions, -1, nCentroidMask, pDebugLabel );
+		if ( pFunction )
+		{
+			g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslVertexShaderOptions, -1, nCentroidMask, pDebugLabel );
 			
-		transbuf.PutString( (char*)tempbuf.Base() );
-		transbuf.PutString( "\n\n" );	// whitespace
+			transbuf.PutString( (char*)tempbuf.Base() );
+			transbuf.PutString( "\n\n" );	// whitespace
+		}
 				
 		if ( !bVertexShader )
 		{
@@ -5359,6 +5368,7 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type, INT BaseV
 		UpdateBoundFBO();
 	}
 
+	{ static int s_nDIP = 0; if ( s_nDIP < 30 ) printf( "DIP: #%d type=%d prim=%d\n", s_nDIP++, Type, primCount ); }
 	g_nTotalDrawsOrClears++;
 
 #if GL_BATCH_PERF_ANALYSIS
@@ -5377,7 +5387,9 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type, INT BaseV
 #endif
 
 	if ( ( !m_indices.m_idxBuffer ) || ( !m_vertexShader ) )
+	{
 		goto draw_failed;
+	}
 	
 	{
 		GL_BATCH_PERF_CALL_TIMER;
@@ -5634,6 +5646,7 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type,INT BaseVe
 		UpdateBoundFBO();
 	}
 
+	{ static int s_nDIP = 0; if ( s_nDIP < 30 ) printf( "DIP: #%d type=%d prim=%d\n", s_nDIP++, Type, primCount ); }
 	g_nTotalDrawsOrClears++;
 
 #if GL_BATCH_PERF_ANALYSIS

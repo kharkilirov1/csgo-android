@@ -1913,6 +1913,8 @@ void CMatRenderContext::SetNonInteractiveTempFullscreenBuffer( ITexture *pTextur
 
 void CMatRenderContext::RefreshFrontBufferNonInteractive()
 {
+	static int s_nNIRefresh = 0;
+	if ( ( s_nNIRefresh++ % 300 ) == 0 ) printf( "NIR: refresh #%d\n", s_nNIRefresh - 1 );
 	g_pShaderDevice->RefreshFrontBufferNonInteractive();
 #ifdef _X360
 	if ( s_bDirtyDisk )

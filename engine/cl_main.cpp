@@ -1585,7 +1585,7 @@ void CL_RegisterResources( void )
 class CEngineReliableAvatarCallback_t
 {
 public:
-	CEngineReliableAvatarCallback_t() : m_steamID( Steam3Client().SteamUser()->GetSteamID() )
+	CEngineReliableAvatarCallback_t() : m_steamID( ( Steam3Client().SteamUser() ) ? Steam3Client().SteamUser()->GetSteamID() : CSteamID() )
 		, m_CallbackPersonaStateChanged( this, &CEngineReliableAvatarCallback_t::Steam_OnPersonaStateChanged )
 		, m_CallbackAvatarImageLoaded( this, &CEngineReliableAvatarCallback_t::Steam_OnAvatarImageLoaded )
 	{

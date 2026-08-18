@@ -549,7 +549,11 @@ void PhysParseSurfaceData( IPhysicsSurfaceProps *pProps, IFileSystem *pFileSyste
 	}
 	else
 	{
+#ifdef ANDROID
+		Warning( "Unable to load manifest file '%s' (continuing without surfaceprops)\n", SURFACEPROP_MANIFEST_FILE );
+#else
 		Error( "Unable to load manifest file '%s'\n", SURFACEPROP_MANIFEST_FILE );
+#endif
 	}
 
 	manifest->deleteThis();

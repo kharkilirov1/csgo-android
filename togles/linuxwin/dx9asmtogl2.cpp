@@ -2554,7 +2554,16 @@ void D3DToGL::Handle_TEX( uint32 dwToken, bool bIsTexLDL )
 			V_snprintf( szExtra, sizeof( szExtra ), ".%c", GetSwizzleComponent( pSrc0Reg, 3 ) );
 			V_strncat( szLOD, szExtra, sizeof( szLOD ) );
 
-			PrintToBufWithIndents( *m_pBufALUCode, "%s = %s( %s, %s, %s );\n", pDestReg, "textureLod", pSrc1Reg, sCoordVar.String(), szLOD );
+			if ( bIsShadowSampler )
+			{
+				// GLSL ES shadow texture lookups return a scalar compare result, while a
+				// D3D texture instruction writes a four-component destination register.
+				PrintToBufWithIndents( *m_pBufALUCode, "%s = vec4( textureLod( %s, %s, %s ) );\n", pDestReg, pSrc1Reg, sCoordVar.String(), szLOD );
+			}
+			else
+			{
+				PrintToBufWithIndents( *m_pBufALUCode, "%s = textureLod( %s, %s, %s );\n", pDestReg, pSrc1Reg, sCoordVar.String(), szLOD );
+			}
 		}
 		else if ( bIsShadowSampler )
 		{

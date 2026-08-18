@@ -45,6 +45,8 @@ import com.valvesoftware.ValveActivity2;
 
 public class LauncherActivity extends Activity {
 	public static String PKG_NAME;
+	private static final String PREF_PRODUCTION_ARGS_MIGRATED =
+		"production_args_migrated_v1";
 
 	public static boolean can_write = true;
 	static EditText cmdArgs, GamePath = null, EnvEdit, res_width, res_height;
@@ -211,6 +213,20 @@ public class LauncherActivity extends Activity {
 	}
 
 
+	private String loadCommandArguments() {
+		String arguments = mPref.getString("argv", "");
+		if (!mPref.getBoolean(PREF_PRODUCTION_ARGS_MIGRATED, false)) {
+			SharedPreferences.Editor editor = mPref.edit();
+			if ("-console".equals(arguments.trim())) {
+				arguments = "";
+				editor.putString("argv", arguments);
+			}
+			editor.putBoolean(PREF_PRODUCTION_ARGS_MIGRATED, true);
+			editor.apply();
+		}
+		return arguments;
+	}
+
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		PKG_NAME = getApplication().getPackageName();
@@ -283,7 +299,7 @@ public class LauncherActivity extends Activity {
 //		check_updates = (CheckBox)findViewById(R.id.checkbox_check_updates);
 		String last_commit = getResources().getString(R.string.last_commit);
 
-		cmdArgs.setText(mPref.getString("argv", "-console"));
+		cmdArgs.setText(loadCommandArguments());
 		GamePath.setText(LauncherPaths.normalizeSelectedPath(
 			mPref.getString("gamepath", getDefaultDir() + "/srceng")));
 		EnvEdit.setText(mPref.getString("env", "LIBGL_USEVBO=0"));

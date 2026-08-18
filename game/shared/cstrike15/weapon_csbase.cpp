@@ -1306,7 +1306,8 @@ const CCSWeaponInfo &CWeaponCSBase::GetCSWpnData() const
 	// For now, just crash now instead of creating a time bomb for later.
 	if ( GetWeaponFileInfoHandle() == GetInvalidWeaponInfoHandle() )
 	{
-		CFmtStr outputStr( "Weapon '%s' script file not found, but its data was accessed. This error is fatal.\n", GetName() ? GetName() : "<unknown>" );
+		const char *pClassname = const_cast< CWeaponCSBase * >( this )->GetClassname();
+		CFmtStr outputStr( "Weapon '%s' script file not found, but its data was accessed. This error is fatal.\n", pClassname && pClassname[0] ? pClassname : "<unknown>" );
 		AssertFatalMsg( 0, outputStr.Access() );
 	}
 

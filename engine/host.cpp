@@ -4641,6 +4641,7 @@ Host_Frame
 */
 void Host_RunFrame( float time )
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "HRF: Host_RunFrame #%d\n", s_n - 1 ); }
 	static  double	timetotal = 0;
 	static  int		timecount = 0;
 	static	double  timestart = 0;
@@ -4883,7 +4884,10 @@ void Host_InitProcessor( void )
 	}
 
 	char szFeatureString[256];
-	Q_strncpy( szFeatureString, pi.m_szProcessorID, sizeof( szFeatureString ) );
+	const char *szProcID = pi.m_szProcessorID;
+	if ( !szProcID || !szProcID[0] )
+		szProcID = "Unknown Processor";
+	Q_strncpy( szFeatureString, szProcID, sizeof( szFeatureString ) );
 	Q_strncat( szFeatureString, " ", sizeof( szFeatureString ), COPY_ALL_CHARACTERS );
 
 	if( pi.m_bSSE )

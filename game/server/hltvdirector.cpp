@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -111,7 +111,11 @@ CHLTVDirector::~CHLTVDirector()
 
 bool CHLTVDirector::Init()
 {
+#ifdef ANDROID
+	return true;	// hltvevents.res not available on Android builds
+#else
 	return gameeventmanager->LoadEventsFromFile( "resource/hltvevents.res" ) > 0;
+#endif
 }
 
 void CHLTVDirector::Shutdown()

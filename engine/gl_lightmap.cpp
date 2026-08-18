@@ -1550,6 +1550,14 @@ static void UpdateLightmapTextures( SurfaceHandle_t surfID, bool needsBumpmap )
 {
 	ASSERT_SURF_VALID( surfID );
 
+#ifdef __ANDROID__
+	{
+		static int s_nULM = 0;
+		if ( s_nULM < 5 || ( s_nULM % 2000 ) == 0 )
+			printf( "ULM: #%d sortInfo=%d\n", s_nULM, (int)( materialSortInfoArray != NULL ) );
+		s_nULM++;
+	}
+#endif
 	if( materialSortInfoArray )
 	{
 		int lightmapSize[2];
@@ -1988,6 +1996,8 @@ void R_RedownloadAllLightmaps()
 
 	double st = Sys_FloatTime();
 
+	printf( "RDLM: enter nsurf=%d unloaded=%d\n", host_state.worldbrush ? host_state.worldbrush->numsurfaces : -1,
+		host_state.worldbrush ? (int)host_state.worldbrush->m_bUnloadedAllLightmaps : -1 );
 	if ( !host_state.worldbrush->m_bUnloadedAllLightmaps )
 	{		
 		bool bOnlyUseLightStyles = false;

@@ -1,9 +1,10 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
 //=============================================================================//
 
+#include <stdio.h>
 #include "cbase.h"
 #include <KeyValues.h>
 #include "cs_weapon_parse.h"
@@ -730,6 +731,7 @@ const CUtlVector< WeaponPaintableMaterial_t >* CCSWeaponInfo::GetPaintData( cons
 
 void CCSWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 {
+	printf( "WPN: Parse %s\n", szWeaponName );
 	BaseClass::Parse( pKeyValuesData, szWeaponName );
 
 	m_weaponId = WeaponIdFromString( szWeaponName );
