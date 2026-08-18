@@ -81,6 +81,14 @@ namespace ColorSpace
 		pDstRGB[0] = RoundFloatToByte( tmpVect[0] * 255.0f );
 		pDstRGB[1] = RoundFloatToByte( tmpVect[1] * 255.0f );
 		pDstRGB[2] = RoundFloatToByte( tmpVect[2] * 255.0f );
+#ifdef __ANDROID__
+		{
+			static int s_nLTLM = 0;
+			if ( s_nLTLM < 12 )
+				printf( "LTLM: #%d src=%.3f gamma=%.4f out=[%d %d %d]\n", s_nLTLM++,
+					pSrcRGB[0], g_LinearToVertex[1024], (int)pDstRGB[0], (int)pDstRGB[1], (int)pDstRGB[2] );
+		}
+#endif
 	}
 
 	// Clamp the three values for bumped lighting such that we trade off directionality for brightness.

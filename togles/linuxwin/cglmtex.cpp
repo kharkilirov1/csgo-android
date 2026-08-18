@@ -3546,6 +3546,8 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 	CGLMTex *pPrevTex = m_ctx->m_samplers[0].m_pBoundTex;
 	m_ctx->BindTexToTMU( this, 0 );		// SelectTMU(n) is a side effect
 
+	gGL->glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );	// texel rows are tightly packed
+
 	GLMTexFormatDesc *format = m_layout->m_format;
 	
 	GLenum target		= m_layout->m_key.m_texGLTarget;
@@ -3560,6 +3562,7 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 		sliceAddress = m_mapped;
 	else if( m_backing )
 		sliceAddress = m_backing + slice->m_storageOffset;
+
 
 	// allow use of subimage if the target is texture2D and it has already been teximage'd
 	bool mayUseSubImage = false;
@@ -3696,15 +3699,36 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 						gGL->glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
 						gGL->glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
 #ifdef __ANDROID__
-					if ( m_layout->m_key.m_texFlags & kGLMTexSRGB )
 					{
 						static int s_nDump = 0;
-						if ( s_nDump < 24 )
+						if ( s_nDump < 60 && sliceAddress && slice->m_xSize >= 256 )
 						{
 							unsigned char *pb = (unsigned char*)sliceAddress;
-							printf( "TXW: #%d SUB %dx%d intfmt=%x data=%p [%02x %02x %02x %02x] glerr=0x%x\n",
-								s_nDump++, slice->m_xSize, slice->m_ySize, intformat, sliceAddress,
-								pb ? pb[0] : 0, pb ? pb[1] : 0, pb ? pb[2] : 0, pb ? pb[3] : 0, gGL->glGetError() );
+							unsigned char *pc = pb ? pb + ( ( (size_t)(slice->m_ySize/2) * slice->m_xSize ) + slice->m_xSize/2 ) * 4 : NULL;
+							unsigned char nMax = 0;
+							if ( pb )
+							{
+								size_t nBytes = (size_t)slice->m_xSize * slice->m_ySize * 4;
+								for ( size_t k = 0; k < nBytes; ++k )
+									if ( pb[k] > nMax ) nMax = pb[k];
+							}
+							int nBrightTexel = -1;
+							if ( pb )
+							{
+								size_t nTexels = (size_t)slice->m_xSize * slice->m_ySize;
+								for ( size_t k = 0; k < nTexels; ++k )
+								{
+									unsigned char *q = pb + k*4;
+									if ( (int)q[0] + (int)q[1] + (int)q[2] > 150 ) { nBrightTexel = (int)k; break; }
+								}
+							}
+							unsigned char *pt = ( nBrightTexel >= 0 && pb ) ? pb + (size_t)nBrightTexel*4 : NULL;
+							printf( "TXW: #%d SUB %dx%d srgb=%d addr=%p tl=[%02x %02x %02x %02x] ctr=[%02x %02x %02x %02x] max=%02x bright=[%02x %02x %02x %02x]@%d glerr=0x%x\n",
+								s_nDump++, slice->m_xSize, slice->m_ySize,
+								( m_layout->m_key.m_texFlags & kGLMTexSRGB ) ? 1 : 0, sliceAddress,
+								pb ? pb[0] : 0, pb ? pb[1] : 0, pb ? pb[2] : 0, pb ? pb[3] : 0,
+								pc ? pc[0] : 0, pc ? pc[1] : 0, pc ? pc[2] : 0, pc ? pc[3] : 0, nMax,
+								pt ? pt[0] : 0, pt ? pt[1] : 0, pt ? pt[2] : 0, pt ? pt[3] : 0, nBrightTexel, gGL->glGetError() );
 						}
 					}
 #endif
@@ -3752,14 +3776,15 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 					}
 
 #ifdef __ANDROID__
-					if ( m_layout->m_key.m_texFlags & kGLMTexSRGB )
 					{
 						static int s_nDump = 0;
-						if ( s_nDump < 24 )
+						if ( s_nDump < 60 && sliceAddress && !noDataWrite && slice->m_xSize >= 256 )
 						{
 							unsigned char *pb = (unsigned char*)sliceAddress;
-							printf( "TXW: #%d IMG %dx%d intfmt=%x data=%p [%02x %02x %02x %02x] glerr=0x%x\n",
-								s_nDump++, slice->m_xSize, slice->m_ySize, intformat, sliceAddress,
+							printf( "TXW: #%d IMG %dx%d srgb=%d label=%s [%02x %02x %02x %02x] glerr=0x%x\n",
+								s_nDump++, slice->m_xSize, slice->m_ySize,
+								( m_layout->m_key.m_texFlags & kGLMTexSRGB ) ? 1 : 0,
+								m_debugLabel ? m_debugLabel : "?",
 								pb ? pb[0] : 0, pb ? pb[1] : 0, pb ? pb[2] : 0, pb ? pb[3] : 0, gGL->glGetError() );
 						}
 					}
@@ -3811,6 +3836,7 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 		free( expandTemp );
 	}
 
+	gGL->glPixelStorei( GL_UNPACK_ALIGNMENT, 4 );
 	m_ctx->BindTexToTMU( pPrevTex, 0 );
 }
 	
@@ -4107,11 +4133,13 @@ void CGLMTex::Unlock( GLMTexLockParams *params )
 		// because it reuploads the whole thing each slice; we only use 3D textures
 		// for the 32x32x32 colorpsace conversion lookups and debugging the problem
 		// would not save any more memory.
-		if ( !m_texClientStorage && ( m_texGLTarget == GL_TEXTURE_2D ) && m_backing )
+		#ifndef __ANDROID__
+if ( !m_texClientStorage && ( m_texGLTarget == GL_TEXTURE_2D ) && m_backing )
 		{
 			free(m_backing);
 			m_backing = NULL;
 		}
+#endif
 	}
 }
 

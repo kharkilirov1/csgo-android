@@ -89,6 +89,13 @@ public:
 
 
 	FORCEINLINE unsigned char GetPixelSize() { return m_Size; }	
+#ifdef __ANDROID__
+	FORCEINLINE void GetChannelSetupForDebug( int &rs, int &gs, int &bs, int &as, unsigned int &rm, unsigned int &gm, unsigned int &bm, unsigned int &am )
+	{
+		rs = m_RShift; gs = m_GShift; bs = m_BShift; as = m_AShift;
+		rm = m_RMask; gm = m_GMask; bm = m_BMask; am = m_AMask;
+	}
+#endif
 	FORCEINLINE unsigned short GetBytesPerRow() { return m_BytesPerRow; }
 
 	FORCEINLINE bool IsUsingFloatFormat() const;

@@ -486,6 +486,19 @@ bool LockTexture( ShaderAPITextureHandle_t bindId, int copy, IDirect3DBaseTextur
 
 	writer.SetPixelMemory( GetImageFormat(pTexture), s_LockedRect.pBits, s_LockedRect.Pitch );
 
+#ifdef __ANDROID__
+	{
+		extern unsigned char *g_pLMProbeBits;
+		extern int g_nLMProbePitch;
+		g_pLMProbeBits = (unsigned char*)s_LockedRect.pBits; g_nLMProbePitch = s_LockedRect.Pitch;
+		static int s_nFmt = 0;
+		ImageFormat fmtLT = GetImageFormat(pTexture);
+		if ( s_nFmt < 20 && s_LockedRect.Pitch >= 2000 )
+			printf( "LTF: #%d lockfmt=%d pixelsize=%d pitch=%d\n", s_nFmt++, (int)fmtLT,
+				(int)writer.GetPixelSize(), s_LockedRect.Pitch );
+	}
+#endif
+
 #ifdef DBGFLAG_ASSERT
 	s_bInLock = true;
 #endif
@@ -535,6 +548,23 @@ void UnlockTexture( ShaderAPITextureHandle_t bindId, int copy, IDirect3DBaseText
 	RECORD_INT( level );
 	RECORD_INT( cubeFaceID );
 
+#ifdef __ANDROID__
+	{
+		extern unsigned char *g_pLMProbeBits;
+		extern int g_nLMProbePitch;
+		static int s_nProbe = 0;
+		if ( g_pLMProbeBits && s_nProbe < 40 && g_nLMProbePitch >= 2000 )
+		{
+			unsigned char *p = g_pLMProbeBits;
+			printf( "LKP: #%d addr=%p after-writer tl=[%02x %02x %02x %02x] r1=[%02x %02x %02x %02x] r16=[%02x %02x %02x %02x] r64=[%02x %02x %02x %02x]\n", s_nProbe++, p,
+				p[0], p[1], p[2], p[3],
+					p[2048], p[2049], p[2050], p[2051],
+					p[16*2048], p[16*2048+1], p[16*2048+2], p[16*2048+3],
+					p[64*2048], p[64*2048+1], p[64*2048+2], p[64*2048+3] );
+			g_pLMProbeBits = NULL;
+		}
+	}
+#endif
 	hr = pSurf->UnlockRect();
 	pSurf->Release();
 #ifdef DBGFLAG_ASSERT
@@ -1223,3 +1253,8 @@ int ComputeTextureMemorySize( const GUID &nDeviceGUID, D3DDEVTYPE deviceType )
 	return 0;
 #endif
 }
+
+#ifdef __ANDROID__
+unsigned char *g_pLMProbeBits = 0;
+int g_nLMProbePitch = 0;
+#endif

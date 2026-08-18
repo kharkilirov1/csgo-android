@@ -490,7 +490,9 @@ void CMatLightmaps::AllocateLightmapTexture( int lightmap )
 	case HDR_TYPE_NONE:
 #if !defined( _X360 )
 		imageFormat = IMAGE_FORMAT_RGBA8888;
+#ifndef __ANDROID__
 		flags |= TEXTURE_CREATE_SRGB;
+#endif
 #else
 		imageFormat = IMAGE_FORMAT_LINEAR_RGBA8888;
 #endif
@@ -1822,7 +1824,7 @@ void CMatLightmaps::LightmapBitsToPixelWriter_LDR( float* pFloatImage, int pLigh
 				color[3] = RoundFloatToByte( pSrc[3] * 255.0f );
 			}
 
-			m_LightmapPixelWriter.WritePixel( color[0], color[1], color[2], color[3] );
+m_LightmapPixelWriter.WritePixel( color[0], color[1], color[2], color[3] );
 
 			if ( pfmOut )
 			{
@@ -2305,6 +2307,26 @@ void CMatLightmaps::UpdateLightmap( int lightmapPageID, int lightmapSize[2],
 			}
 		}
 	}
+
+#ifdef __ANDROID__
+	{
+		static int s_nLMD = 0;
+		if ( pFloatImage && s_nLMD < 30 )
+		{
+			int nW = lightmapSize[0];
+			int nH = lightmapSize[1];
+			int nMid = ( ( nH / 2 ) * nW + nW / 2 ) * 4;
+			{
+				extern float g_LinearToVertex[4096];
+				printf( "LMD: #%d page=%d size=%dx%d off=%d,%d src0=[%d %d %d] srcmid=[%d %d %d] gamma1024=%.4f\n", s_nLMD++, lightmapPageID,
+					nW, nH, offsetIntoLightmapPage[0], offsetIntoLightmapPage[1],
+					(int)(pFloatImage[0]*255.0f), (int)(pFloatImage[1]*255.0f), (int)(pFloatImage[2]*255.0f),
+					(int)(pFloatImage[nMid]*255.0f), (int)(pFloatImage[nMid+1]*255.0f), (int)(pFloatImage[nMid+2]*255.0f),
+					g_LinearToVertex[1024] );
+			}
+		}
+	}
+#endif
 
 	int subRectOffset[2] = {0,0};
 

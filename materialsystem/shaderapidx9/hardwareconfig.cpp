@@ -788,6 +788,12 @@ int CHardwareConfig::GetMaxVertexTextureDimension() const
 
 HDRType_t CHardwareConfig::GetHDRType() const
 {
+#ifdef __ANDROID__
+	// The GLES translation layer cannot run the HDR integer pipeline: RGBA16161616
+	// lightmap pages upload, but HDR compositing never lights up and the world
+	// renders black. Force LDR like the pre-HDR path.
+	return HDR_TYPE_NONE;
+#endif
 	// On MacOS, this value comes down from the engine, which read it from the registry...which doesn't exist on Mac, so we're slamming to true here
 	if ( IsOpenGL() )
 	{

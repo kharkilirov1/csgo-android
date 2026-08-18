@@ -21,6 +21,22 @@ static int				linearToScreen[1024];	// linear (0..1) to gamma corrected vertex l
 float					g_LinearToVertex[4096];	// linear (0..4) to screen corrected vertex space (0..1?)
 static int				linearToLightmap[4096];	// linear (0..4) to screen corrected texture value (0..255)
 
+#ifdef __ANDROID__
+// the engine on Android can reach map load without ever calling
+// ColorSpace::SetGamma; g_LinearToVertex would stay zeroed and every
+// LightmapBitsToPixelWriter_LDR conversion would produce black. Build the
+// default tables once at load time.
+class CDefaultGammaTables
+{
+public:
+	CDefaultGammaTables()
+	{
+		ColorSpace::SetGamma( 2.2f, 2.2f, 2.0f, true, false );
+	}
+};
+static CDefaultGammaTables s_DefaultGammaTables;
+#endif
+
 void ColorSpace::SetGamma( float screenGamma, float texGamma, 
 						   float overbright, bool allowCheats, bool linearFrameBuffer )
 {

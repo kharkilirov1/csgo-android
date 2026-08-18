@@ -411,7 +411,17 @@ HRESULT IDirect3DDevice9::CreateTexture(UINT Width,UINT Height,UINT Levels,DWORD
 	{
 		key.m_texFlags |= kGLMTexSRGB;
 	}
-	
+
+#ifdef __ANDROID__
+	if ( Width == 512 )
+	{
+		static int s_nCRT = 0;
+		if ( s_nCRT < 26 )
+			printf( "CRT: #%d CreateTexture %ux%u fmt=%x usage=%x srgb=%d\n", s_nCRT++, Width, Height, Format, Usage,
+				( Usage & D3DUSAGE_TEXTURE_SRGB ) ? 1 : 0 );
+	}
+#endif
+
 	if (Usage & D3DUSAGE_RENDERTARGET)
 	{
 		Assert( !(Usage & D3DUSAGE_DEPTHSTENCIL) );
@@ -6387,7 +6397,12 @@ HRESULT IDirect3DDevice9::SetSamplerStateNonInline( DWORD Sampler, D3DSAMPLERSTA
 	case D3DSAMP_MAXANISOTROPY: 
 		m_ctx->SetSamplerMaxAnisotropy( Sampler, Value);
 		break;
-	case D3DSAMP_SRGBTEXTURE: 
+	case D3DSAMP_SRGBTEXTURE:
+#ifdef __ANDROID__
+		// sampler sRGB flips force texture re-creation (ResetSRGB) which wipes
+		// already-uploaded lightmap pages; textures keep their create-time format
+		break;
+#endif
 		//m_samplers[ Sampler ].m_srgb = Value;
 		m_ctx->SetSamplerSRGBTexture(Sampler, Value);
 		break;
