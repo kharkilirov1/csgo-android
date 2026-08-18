@@ -22,7 +22,7 @@
 #ifdef IS_WINDOWS_PC
 #include <windows.h>
 #endif
-#include "keyvalues.h"
+#include "KeyValues.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"

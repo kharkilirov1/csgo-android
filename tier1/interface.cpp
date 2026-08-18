@@ -401,6 +401,47 @@ CSysModule *Sys_LoadModule( const char *pModuleName )
 	// prior to the call to this routine.
 	HMODULE hDLL = NULL;
 
+#if defined( __ANDROID__ )
+	// Android packages native modules under their ELF SONAMEs (libengine.so,
+	// libclient.so, ...), while Source asks for desktop-style names such as
+	// engine.so and sometimes prefixes them with a game-bin path.  More
+	// importantly, the selected game directory is user-writable external
+	// storage: it must supply content, never executable code.  Resolve only the
+	// basename and load it from the app-private nativeLibraryDir supplied by the
+	// Java launcher.
+	if ( !pModuleName || !pModuleName[0] )
+		return NULL;
+
+	char moduleStem[MAX_PATH];
+	V_FileBase( pModuleName, moduleStem, sizeof( moduleStem ) );
+	if ( !moduleStem[0] )
+		return NULL;
+
+	char androidModuleName[MAX_PATH];
+	if ( !Q_strnicmp( moduleStem, "lib", 3 ) )
+	{
+		V_snprintf( androidModuleName, sizeof( androidModuleName ), "%s%s", moduleStem, DLL_EXT_STRING );
+	}
+	else
+	{
+		V_snprintf( androidModuleName, sizeof( androidModuleName ), "lib%s%s", moduleStem, DLL_EXT_STRING );
+	}
+
+	const char *pAppLibraryPath = getenv( "APP_LIB_PATH" );
+	if ( pAppLibraryPath && pAppLibraryPath[0] && Q_IsAbsolutePath( pAppLibraryPath ) )
+	{
+		char absoluteModuleName[MAX_PATH];
+		V_ComposeFileName( pAppLibraryPath, androidModuleName, absoluteModuleName, sizeof( absoluteModuleName ) );
+		hDLL = Sys_LoadLibraryGuts( absoluteModuleName );
+	}
+
+	// The Android linker also knows the APK's native-library namespace.  Keep
+	// this basename-only fallback for launchers that do not provide APP_LIB_PATH;
+	// never retry the caller's external path.
+	if ( !hDLL )
+		hDLL = Sys_LoadLibraryGuts( androidModuleName );
+#else
+
 	char alteredFilename[ MAX_PATH ];
 	if ( IsPS3() )
 	{
@@ -491,6 +532,7 @@ CSysModule *Sys_LoadModule( const char *pModuleName )
 		}
 #endif // DEBUG
 	}
+#endif // __ANDROID__
 
 	// If running in the debugger, assume debug binaries are okay, otherwise they must run with -allowdebug
 	if ( !IsGameConsole() && Sys_GetProcAddress( hDLL, "BuiltDebug" ) )

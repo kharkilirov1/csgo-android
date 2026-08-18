@@ -19,7 +19,7 @@
 #include "vgui_controls/Frame.h"
 #include "vgui_controls/QueryBox.h"
 #include "cvartogglecheckbutton.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "vgui/IInput.h"
 #include "vgui/ILocalize.h"
 #include "vgui/ISystem.h"

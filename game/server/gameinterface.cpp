@@ -7,6 +7,7 @@
 //===========================================================================//
 
 #include "cbase.h"
+#include "econ/econ_item_system.h"
 
 #if !defined (_GAMECONSOLE)
 
@@ -67,7 +68,7 @@
 #endif
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "nav_mesh.h"
-#include "ai_responsesystem.h"
+#include "AI_ResponseSystem.h"
 #include "saverestore_stringtable.h"
 #include "util.h"
 #include "tier0/icommandline.h"
@@ -90,7 +91,7 @@
 #include "scenefilecache/ISceneFileCache.h"
 #include "tier2/tier2.h"
 #include "particles/particles.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "ixboxsystem.h"
 #include "matchmaking/imatchframework.h"
 #include "querycache.h"
@@ -699,6 +700,7 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 		CreateInterfaceFn physicsFactory, CreateInterfaceFn fileSystemFactory, 
 		CGlobalVars *pGlobals)
 {
+	printf( "SRV: DLLInit begin\n" );
 	COM_TimestampedLog( "ConnectTier1/2/3Libraries - Start" );
 
 	ConnectTier1Libraries( &appSystemFactory, 1 );
@@ -1066,6 +1068,7 @@ float CServerGameDLL::GetTickInterval( void ) const
 // This is called when a new game is started. (restart, map)
 CEG_NOINLINE bool CServerGameDLL::GameInit( void )
 {
+	printf( "SRV: GameInit begin\n" );
 	ResetGlobalState();
 
 	const char* szConfigName = "game.cfg";
@@ -1088,6 +1091,27 @@ CEG_NOINLINE bool CServerGameDLL::GameInit( void )
 	{
 		gameeventmanager->FireEvent( event );
 	}
+
+	printf( "SRV: GameInit end\n" );
+
+#ifdef __ANDROID__
+	// Offline schema bootstrap: the GC never connects with the stub steam_api,
+	// and CEconItemSystem is not a game system, so nobody else runs this load.
+	// Without item definitions every GetItemDefinition() is NULL and server
+	// code crashes on the first kill award / shot stat.
+	if ( ItemSystem()->GetItemSchema()->GetVersion() == 0 )
+	{
+		KeyValuesAD pItemsGameKV( "ItemsGameFile" );
+		if ( pItemsGameKV->LoadFromFile( g_pFullFileSystem, "scripts/items/items_game.txt", "GAME" ) )
+		{
+			CUtlBuffer buffer;
+			pItemsGameKV->WriteAsBinary( buffer );
+			CUtlVector< CUtlString > vecErrors;
+			bool bSuccess = ItemSystem()->GetItemSchema()->BInitBinaryBuffer( buffer, &vecErrors );
+			Msg( "Offline item schema load (server GameInit): %s\n", bSuccess ? "ok" : "FAILED" );
+		}
+	}
+#endif
 
 	return true;
 }
@@ -1191,6 +1215,7 @@ bool CServerGameDLL::SupportsSaveRestore()
 // Called any time a new level is started (after GameInit() also on level transitions within a game)
 CEG_NOINLINE bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, char const *pOldLevel, char const *pLandmarkName, bool loadGame, bool background )
 {
+	printf( "SRV: LevelInit begin %s\n", pMapName );
 	VPROF("CServerGameDLL::LevelInit");
 	ResetWindspeed();
 	UpdateChapterRestrictions( pMapName );
@@ -1337,7 +1362,7 @@ bool g_bCheckForChainedActivate;
 
 CEG_NOINLINE void CServerGameDLL::ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
 {
-	// HACKHACK: UNDONE: We need to redesign the main loop with respect to save/load/server activate
+	printf( "SRV: ServerActivate begin\n" );	// HACKHACK: UNDONE: We need to redesign the main loop with respect to save/load/server activate
 	if ( g_InRestore )
 		return;
 

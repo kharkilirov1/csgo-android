@@ -45,7 +45,7 @@
 #include "sys.h" // Sys_GetRegKeyValue()
 #include "vgui_drawtreepanel.h"
 #include "vgui_vprofpanel.h"
-#include "vgui/vgui.h"
+#include "vgui/VGUI.h"
 #include "vgui/IInput.h"
 #include <vgui/IInputInternal.h>
 #include "vgui_controls/AnimationController.h"
@@ -74,9 +74,9 @@
 
 // vgui2 interface
 // note that GameUI project uses ..\public\vgui and ..\public\vgui_controls, not ..\utils\vgui\include
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/Cursor.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IPanel.h>
 #include <vgui/IScheme.h>
@@ -707,6 +707,7 @@ void CEngineVGui::PreparePanel( Panel *panel, int nZPos, bool bVisible /*= true*
 //-----------------------------------------------------------------------------
 void CEngineVGui::Init()
 {
+	printf( "EUI: CEngineVGui::Init begin\n" );
 	const char *szDllName = "";
 	
 	if ( CommandLine()->FindParm( "-gameuidll" ) )

@@ -12,7 +12,7 @@
 #include "tier0/memalloc.h"
 #include "tier1/interface.h"
 #include "tier1/utlsymbol.h"
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 #include "tier1/checksum_crc.h"
 #include "filesystem/iasyncfilesystem.h"
 

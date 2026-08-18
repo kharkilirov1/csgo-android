@@ -61,7 +61,7 @@
 #include "replayserver.h"
 #include "replayhistorymanager.h"
 #endif
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "sv_logofile.h"
 #include "cl_steamauth.h"
 #include "sv_steamauth.h"
@@ -1015,6 +1015,7 @@ void ServerDLL_Unload()
 //-----------------------------------------------------------------------------
 void SV_InitGameDLL( void )
 {
+    printf( "SVM: SV_InitGameDLL\n" );
     COM_TimestampedLog( "SV_InitGameDLL" );
 
 	SV_SetSteamCrashComment();
@@ -1089,6 +1090,7 @@ void SV_InitGameDLL( void )
     // Flag that we've started the game .dll
     sv.dll_initialized = true;
 
+    printf( "SVM: serverGameDLL->DLLInit - Start\n" );
     COM_TimestampedLog( "serverGameDLL->DLLInit - Start" );
 
     // Tell the game DLL to start up
@@ -1097,6 +1099,7 @@ void SV_InitGameDLL( void )
         Sys_Error( "serverGameDLL->DLLInit() failed.\n");
     }
 
+    printf( "SVM: serverGameDLL->DLLInit - Finish\n" );
     COM_TimestampedLog( "serverGameDLL->DLLInit - Finish" );
 
     if ( CommandLine()->FindParm( "-NoLoadPluginsForClient" ) == 0 )
@@ -1108,6 +1111,7 @@ void SV_InitGameDLL( void )
 
     sv_noclipduringpause = ( ConVar * )g_pCVar->FindVar( "sv_noclipduringpause" );
 
+    printf( "SVM: SV_InitSendTables\n" );
     COM_TimestampedLog( "SV_InitSendTables" );
 
     // Make extra copies of data tables if they have SendPropExcludes.
@@ -2567,11 +2571,13 @@ void SV_CreateBaseline (void)
 //-----------------------------------------------------------------------------
 bool SV_ActivateServer()
 {
+    printf( "SVM: SV_ActivateServer\n" );
     COM_TimestampedLog( "SV_ActivateServer" );
 #ifndef DEDICATED
     EngineVGui()->UpdateProgressBar(PROGRESS_ACTIVATESERVER);
 #endif
 
+    printf( "SVM: serverGameDLL->ServerActivate\n" );
     COM_TimestampedLog( "serverGameDLL->ServerActivate" );
 
     bool bPrevState = networkStringTableContainerServer->Lock( false );
@@ -2581,6 +2587,7 @@ bool SV_ActivateServer()
     // all setup is completed, any further precache statements are errors
     sv.m_State = ss_active;
     
+    printf( "SVM: SV_CreateBaseline\n" );
     COM_TimestampedLog( "SV_CreateBaseline" );
 
     // create a baseline for more efficient communications
@@ -2600,6 +2607,7 @@ bool SV_ActivateServer()
         Q_strncpy( sv.m_szSkyname, "unknown", sizeof( sv.m_szSkyname ) );
     }
 
+    printf( "SVM: Send Reconnects\n" );
     COM_TimestampedLog( "Send Reconnects" );
 
     // Tell connected clients to reconnect
@@ -2749,6 +2757,7 @@ bool SV_ActivateServer()
 	if ( serverGameDLL && Steam3Server().GetGSSteamID().IsValid() )
 		serverGameDLL->UpdateGCInformation();
 
+    printf( "SVM: SV_ActivateServer(finished)\n" );
     COM_TimestampedLog( "SV_ActivateServer(finished)" );
 
     return true;
@@ -2929,6 +2938,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
 
     ReloadWhitelist( mapname );
 
+    printf( "SVM: SV_SpawnServer(%s)\n" );
     COM_TimestampedLog( "SV_SpawnServer(%s)", mapname );
 #ifndef DEDICATED
     EngineVGui()->UpdateProgressBar(PROGRESS_SPAWNSERVER);
@@ -2968,6 +2978,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     // Setup gamemode based on the settings the map was started with
     // ExecGameTypeCfg( mapname );
 
+    printf( "SVM: StaticPropMgr()->LevelShutdown()\n" );
     COM_TimestampedLog( "StaticPropMgr()->LevelShutdown()" );
 
 #if !defined( DEDICATED )
@@ -2984,6 +2995,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
 		}
 	}
 
+    printf( "SVM: Host_FreeToLowMark\n" );
     COM_TimestampedLog( "Host_FreeToLowMark" );
 
     Host_FreeStateAndWorld( true );
@@ -2992,10 +3004,12 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     // Clear out the mapversion so it's reset when the next level loads. Needed for changelevels.
     g_ServerGlobalVariables.mapversion = 0;
 
+    printf( "SVM: sv.Clear()\n" );
     COM_TimestampedLog( "sv.Clear()" );
 
     Clear();
 
+    printf( "SVM: framesnapshotmanager->LevelChanged()\n" );
     COM_TimestampedLog( "framesnapshotmanager->LevelChanged()" );
 
     // Clear out the state of the most recently sent packed entities from
@@ -3039,6 +3053,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     // Assume no entities beyond world and client slots
     num_edicts = GetMaxClients()+1;
 
+    printf( "SVM: SV_AllocateEdicts\n" );
     COM_TimestampedLog( "SV_AllocateEdicts" );
 
     SV_AllocateEdicts();
@@ -3053,6 +3068,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     //  if needed
     AssignClassIds();
 
+    printf( "SVM: Set up players\n" );
     COM_TimestampedLog( "Set up players" );
 
     // allocate player data, and assign the values into the edicts
@@ -3067,6 +3083,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
         InitializeEntityDLLFields( cl->edict );
     }
 
+    printf( "SVM: Set up players(done)\n" );
     COM_TimestampedLog( "Set up players(done)" );
 
     m_State = ss_loading;
@@ -3116,6 +3133,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
         }
     }
 
+    printf( "SVM: modelloader->GetModelForName(%s) -- Start\n" );
     COM_TimestampedLog( "modelloader->GetModelForName(%s) -- Start", szModelName );
 
     host_state.SetWorldModel( modelloader->GetModelForName( szModelName, IModelLoader::FMODELLOADER_SERVER ) );
@@ -3127,6 +3145,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
         return false;
     }
 
+    printf( "SVM: modelloader->GetModelForName(%s) -- Finished\n" );
     COM_TimestampedLog( "modelloader->GetModelForName(%s) -- Finished", szModelName );
 
     if ( IsMultiplayer() && !IsGameConsole() )
@@ -3164,6 +3183,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
 
     m_StringTables = networkStringTableContainerServer;
 
+    printf( "SVM: SV_CreateNetworkStringTables\n" );
     COM_TimestampedLog( "SV_CreateNetworkStringTables" );
 
 #ifndef DEDICATED
@@ -3179,6 +3199,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     PrecacheGeneric( "", 0 );
     PrecacheSound( "", 0 );
 
+    printf( "SVM: Precache world model (%s)\n" );
     COM_TimestampedLog( "Precache world model (%s)", szModelName );
 
 #ifndef DEDICATED
@@ -3187,6 +3208,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     // Add in world
     PrecacheModel( szModelName, RES_FATALIFMISSING | RES_PRELOAD, host_state.worldmodel );
 
+    printf( "SVM: Precache brush models\n" );
     COM_TimestampedLog( "Precache brush models" );
 
     // Add world submodels to the model cache
@@ -3202,6 +3224,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
 #ifndef DEDICATED
     EngineVGui()->UpdateProgressBar(PROGRESS_CLEARWORLD);
 #endif
+    printf( "SVM: SV_ClearWorld\n" );
     COM_TimestampedLog( "SV_ClearWorld" );
 
     // Clear world interaction links
@@ -3212,6 +3235,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
     // load the rest of the entities
     //
 
+    printf( "SVM: InitializeEntityDLLFields\n" );
     COM_TimestampedLog( "InitializeEntityDLLFields" );
 
     InitializeEntityDLLFields( edicts );
@@ -3253,6 +3277,7 @@ bool CGameServer::SpawnServer( char *mapname, char * mapGroupName, char *startsp
         g_GameEventManager.FireEvent( event );
     }
 
+    printf( "SVM: SV_SpawnServer -- Finished\n" );
     COM_TimestampedLog( "SV_SpawnServer -- Finished" );
 
     g_pFileSystem->EndMapAccess();

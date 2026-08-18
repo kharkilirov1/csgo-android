@@ -612,6 +612,18 @@ CBaseModPanel::CBaseModPanel( const char *panelName ) : Panel(NULL, panelName )
 		m_bScaleformMainMenuEnabled = false;
 	}
 
+#if defined( __ANDROID__ )
+	// Autodesk GFx/Scaleform never shipped for Android/ARM64.  The Android
+	// scaleformui module is deliberately a no-op compatibility stub, so routing
+	// the front-end or pause menu through it leaves a running game behind a
+	// permanently blank screen.  Keep the (bypassed) start-screen state long
+	// enough for CompleteStartScreenSignIn() to open the native VGUI menu.
+	m_bScaleformMainMenuEnabled = false;
+	m_bScaleformPauseMenuEnabled = false;
+	if ( !CommandLine()->FindParm( "+map" ) )
+		m_bShowStartScreen = true;
+#endif
+
 	if ( GameUI().IsConsoleUI() )
 	{
 		m_pConsoleAnimationController = new AnimationController( this );
@@ -659,6 +671,13 @@ CBaseModPanel::CBaseModPanel( const char *panelName ) : Panel(NULL, panelName )
 
 	// start the menus fully transparent
 	SetMenuAlpha( 0 );
+
+#if defined( __ANDROID__ )
+	// The menu is visually hidden at this point.  Its original logical state is
+	// "shown", however, which makes the later VGUI fallback ShowMainMenu(true)
+	// return before restoring alpha/visibility.
+	m_bMainMenuShown = false;
+#endif
 
 	if ( GameUI().IsConsoleUI() )
 	{
@@ -1353,6 +1372,34 @@ void CBaseModPanel::CreateGameMenu()
 	{
 		m_pGameMenu = RecursiveLoadGameMenu(datafile);
 	}
+#if defined( __ANDROID__ )
+	else
+	{
+		// Resource/GameMenu.res ships in the game content, which may be
+		// incomplete on Android. A built-in minimal menu beats dying before
+		// the first frame. Plain-text labels: localization may be missing too.
+		Warning( "CreateGameMenu: no Resource/GameMenu.res; using the built-in menu.\n" );
+
+		struct { const char *name; const char *label; const char *command; bool bOnlyInGame; } items[] = {
+			{ "ResumeGame",   "RESUME GAME",  "ResumeGame",                        true  },
+			{ "Disconnect",   "DISCONNECT",   "Disconnect",                        true  },
+			{ "PlayOffline",  "PLAY OFFLINE", "OpenCreateMultiplayerGameDialog",   false },
+			{ "FindServers",  "FIND SERVERS", "OpenServerBrowser",                 false },
+			{ "Options",      "OPTIONS",      "OpenOptionsDialog",                 false },
+			{ "Quit",         "QUIT",         "QuitNoConfirm",                     false },
+		};
+		for ( int i = 0; i < (int)ARRAYSIZE( items ); i++ )
+		{
+			KeyValues *pItem = new KeyValues( items[i].name );
+			pItem->SetString( "label", items[i].label );
+			pItem->SetString( "command", items[i].command );
+			if ( items[i].bOnlyInGame )
+				pItem->SetInt( "OnlyInGame", 1 );
+			datafile->AddSubKey( pItem );
+		}
+		m_pGameMenu = RecursiveLoadGameMenu( datafile );
+	}
+#endif
 
 	if ( !m_pGameMenu )
 	{
@@ -1439,6 +1486,20 @@ CGameMenu *CBaseModPanel::RecursiveLoadGameMenu(KeyValues *datafile)
 		const char *label = dat->GetString("label", "<unknown>");
 		const char *cmd = dat->GetString("command", NULL);
 		const char *name = dat->GetString("name", label);
+
+#if defined( ANDROID )
+		// The Android content set has the CS:GO SFUI localization files, but not
+		// gameui_english.txt. Map the four legacy GameMenu labels onto equivalent
+		// CS:GO tokens instead of displaying the unresolved #GameUI_* keys.
+		if ( !Q_stricmp( label, "#GameUI_GameMenu_FindServers" ) )
+			label = "#SFUI_PlayMenu_BrowseServersButton";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_CreateServer" ) )
+			label = "#SFUI_Start_ListenServer_Workshop_Map";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_Options" ) )
+			label = "#SFUI_MainMenu_HelpButton";
+		else if ( !Q_stricmp( label, "#GameUI_GameMenu_Quit" ) )
+			label = "#SFUI_MainMenu_QuitGameButton";
+#endif
 
 		if ( cmd && !Q_stricmp( cmd, "OpenFriendsDialog" ) && bSteamCommunityFriendsVersion )
 			continue;
@@ -2183,7 +2244,12 @@ void CBaseModPanel::OnGameUIActivated()
 				}
 				else
 				{
+				#if defined( __ANDROID__ )
+					// Android uses native VGUI because Scaleform is a no-op stub.
+					OnOpenPauseMenu();
+				#else
 					OnCommand( "OpenPauseMenu" );
+				#endif
 				}
 			}
 		}
@@ -5851,4 +5917,3 @@ bool CBaseModPanel::LoadingProgressWantsIsolatedRender( bool bContextValid )
 {
 	return CLoadingScreenScaleform::LoadingProgressWantsIsolatedRender( bContextValid );
 }
-

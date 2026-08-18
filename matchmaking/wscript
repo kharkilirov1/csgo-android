@@ -1,0 +1,131 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+PROJECT_NAME = 'matchmaking'
+
+
+def options(opt):
+	return
+
+
+def configure(conf):
+	return
+
+
+def build(bld):
+	base_sources = [
+		'matchmakingqos.cpp',
+		'mm_events.cpp',
+		'mm_extensions.cpp',
+		'mm_framework.cpp',
+		'mm_netmsgcontroller.cpp',
+		'mm_session.cpp',
+		'mm_voice.cpp',
+		'ds_searcher.cpp',
+		'match_searcher.cpp',
+		'mm_netmgr.cpp',
+		'mm_session_offline_custom.cpp',
+		'mm_session_online_client.cpp',
+		'mm_session_online_host.cpp',
+		'mm_session_online_search.cpp',
+		'mm_session_online_teamsearch.cpp',
+		'sys_session.cpp',
+		'steam_apihook.cpp',
+		'steam_datacenterjobs.cpp',
+		'datacenter.cpp',
+		'mm_dlc.cpp',
+		'leaderboards.cpp',
+		'matchsystem.cpp',
+		'player.cpp',
+		'playermanager.cpp',
+		'searchmanager.cpp',
+		'servermanager.cpp',
+		'playerrankingdata.cpp',
+		'extkeyvalues.cpp',
+		'../public/filesystem_helpers.cpp',
+		'main.cpp',
+		# VPC includes this on every platform. Outside X360 it contributes only
+		# the shared XLSP tuning ConVars and has no XDK dependency.
+		'x360_xlsp_cmd.cpp',
+	]
+
+	if not bld.env.DEDICATED:
+		base_sources += ['steam_lobbyapi.cpp']
+
+	base_includes = [
+		'.',
+		'../common',
+		'../gcsdk/steamextra',
+		'../game/shared',
+		'../public',
+		'../public/tier0',
+		'../public/tier1',
+		'../thirdparty/protobuf-2.5.0/src',
+	]
+
+	common_defines = [
+		'MATCHMAKING_DLL',
+		'CSGO=1',
+		'CSTRIKE15=1',
+		'NO_STRING_T',
+		'VECTOR',
+		'VERSION_SAFE_STEAM_API_INTERFACES',
+		'PROTECTED_THINGS_ENABLE',
+		'NO_STEAM_GAMECOORDINATOR',
+		'strncpy=use_Q_strncpy_instead',
+		'_snprintf=use_Q_snprintf_instead',
+	]
+
+	bld.stlib(
+		source=base_sources,
+		target='matchmakingbase',
+		name='matchmakingbase',
+		features='c cxx',
+		includes=base_includes,
+		defines=common_defines,
+		use=['gcsdk', 'tier0', 'tier1'],
+		subsystem=bld.env.MSVC_SUBSYSTEM,
+		idx=bld.get_taskgen_count()
+	)
+
+	title_sources = [
+		'cstrike15/mm_title.cpp',
+		'cstrike15/mm_title_gamesettingsmgr.cpp',
+		'cstrike15/mm_title_main.cpp',
+		'cstrike15/mm_title_richpresence.cpp',
+		'cstrike15/mm_title_titledata.cpp',
+		'../game/shared/cstrike15/gametypes.cpp',
+		'../common/platforminputdevice.cpp',
+		# source_dll_posix_base.vpc adds this once to the final shared object.
+		'../public/tier0/memoverride.cpp',
+	]
+
+	title_includes = base_includes + [
+		'../common/xlast_csgo',
+		'../game/shared/cstrike15',
+		'../game/client/generated_proto',
+	]
+
+	bld.shlib(
+		source=title_sources,
+		target=PROJECT_NAME,
+		name=PROJECT_NAME,
+		features='c cxx',
+		includes=title_includes,
+		defines=common_defines,
+		use=[
+			'matchmakingbase',
+			'interfaces',
+			'gcsdk',
+			'mathlib',
+			'tier0',
+			'tier1',
+			'tier2',
+			'tier3',
+			'vstdlib',
+			'steam_api',
+		],
+		install_path=bld.env.LIBDIR,
+		subsystem=bld.env.MSVC_SUBSYSTEM,
+		idx=bld.get_taskgen_count()
+	)

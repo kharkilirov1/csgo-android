@@ -68,7 +68,10 @@ static void Shader_ConnectOtherMatSysInterfaces( )
 bool Shader_Connect( bool bSetProxyFactory )
 {
 	if ( !materials )
+	{
+		Warning( "Shader_Connect: no IMaterialSystem.\n" );
 		return false;
+	}
 
 	int nAdapter = CommandLine()->ParmValue( "-adapter", 0 );
 	int nModeFlags = MATERIAL_INIT_ALLOCATE_FULLSCREEN_TEXTURE;
@@ -82,6 +85,10 @@ bool Shader_Connect( bool bSetProxyFactory )
 		materials->SetMaterialProxyFactory( &s_MaterialProxyFactory );
 
 	Shader_ConnectOtherMatSysInterfaces( );
+	if ( !g_pMaterialSystemHardwareConfig )
+		Warning( "Shader_Connect: no IMaterialSystemHardwareConfig from materialsystem.\n" );
+	if ( !g_pMaterialSystemDebugTextureInfo )
+		Warning( "Shader_Connect: no IDebugTextureInfo from materialsystem.\n" );
 	return g_pMaterialSystemHardwareConfig && g_pMaterialSystemDebugTextureInfo;
 }
 

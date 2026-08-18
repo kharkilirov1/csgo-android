@@ -1,4 +1,4 @@
-//========== Copyright © 2008, Valve Corporation, All rights reserved. ========
+//========== Copyright ï¿½ 2008, Valve Corporation, All rights reserved. ========
 //
 // Purpose: VScript
 //
@@ -97,7 +97,7 @@
 
 #include "platform.h"
 #include "datamap.h"
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 #include "tier1/functors.h"
 #include "tier0/memdbgon.h"
 
@@ -262,6 +262,15 @@ enum ScriptFuncBindingFlags_t
 
 #ifdef _PS3
 typedef void* ScriptFunctionBindingStorageType_t; // Function descriptor is actually 64-bit
+#elif defined( POSIX )
+// Itanium-ABI pointers-to-member-function are two words (function address or
+// vtable offset, plus a this-adjustment). Storing them in a single void*
+// dropped the adjustment and trapped at static-init on any bound method that
+// needs one (C_BaseEntity's multiple-inheritance getters). Keep both words.
+struct ScriptFunctionBindingStorageType_t
+{
+	void *p[2];
+};
 #else
 typedef void* ScriptFunctionBindingStorageType_t;
 #endif

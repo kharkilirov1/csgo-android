@@ -5,6 +5,7 @@
 //===========================================================================//
 
 #include "tier0/platform.h"
+
 #include "particles/particles.h"
 #include "bitmap/psheet.h"
 #include "filesystem.h"
@@ -19,7 +20,7 @@
 #include "materialsystem/itexture.h"
 #include "materialsystem/imesh.h"
 #include "tier0/vprof.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "tier1/lzmaDecoder.h"
 #include "random_floats.h"
 #include "vtf/vtf.h"
@@ -174,7 +175,27 @@ void CParticleSystemDictionary::DestroyExistingElement( CDmxElement *pElement )
 		if ( m_ParticleNameMap.Defined( pParticleSystemName ) )
 		{
 			CParticleSystemDefinition *pDef = m_ParticleNameMap[ pParticleSystemName ];
-			delete pDef;
+			if ( pDef )
+			{
+				// Guard against double-delete: clear every map entry that
+				// points at this same pDef before deleting it once.
+				for ( int i = 0; i < m_ParticleNameMap.GetNumStrings(); ++i )
+				{
+					if ( m_ParticleNameMap[ i ] == pDef )
+					{
+						m_ParticleNameMap[ i ] = NULL;
+					}
+				}
+				for ( int i = 0; i < m_ParticleIdMap.Count(); ++i )
+				{
+					if ( m_ParticleIdMap[ i ] == pDef )
+					{
+						m_ParticleIdMap.FastRemove( i );
+						--i;
+					}
+				}
+				delete pDef;
+			}
 			m_ParticleNameMap[ pParticleSystemName ] = NULL;
 		}
 		return;
@@ -202,6 +223,8 @@ void CParticleSystemDictionary::DestroyExistingElement( CDmxElement *pElement )
 //-----------------------------------------------------------------------------
 CParticleSystemDefinition* CParticleSystemDictionary::AddParticleSystem( CDmxElement *pParticleSystem )
 {
+	if ( !pParticleSystem )
+		return NULL;
 	if ( Q_stricmp( pParticleSystem->GetTypeString(), "DmeParticleSystemDefinition" ) )
 		return NULL;
 
@@ -526,6 +549,8 @@ void CParticleSystemDefinition::ParseOperators(
 	int nCount = ops.Count();
 	for ( int i = 0; i < nCount; ++i )
 	{
+		if ( !ops[i] )
+			continue;
 		const char *pOrigName = ops[i]->GetValueString( "functionName" );
 		char const *pOpName = RemapOperatorName( pOrigName );
 		if ( pOpName != pOrigName )

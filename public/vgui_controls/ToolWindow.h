@@ -10,7 +10,7 @@
 #pragma once
 #endif
 
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui_controls/Frame.h>
 
 struct TWEdgePair_t;

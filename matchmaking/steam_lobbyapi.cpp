@@ -19,7 +19,7 @@ CInterlockedInt g_numSteamLeaderboardWriters;
 class CSteamLeaderboardWriter
 {
 public:
-	CSteamLeaderboardWriter( KeyValues *pViewDescription, KeyValues *pViewData );
+	CSteamLeaderboardWriter( KeyValues *pViewDescription, KeyValues *pViewData, ISteamUserStats *pSteamUserStats );
 	~CSteamLeaderboardWriter();
 
 protected:
@@ -42,7 +42,7 @@ protected:
 	int m_nViewDescriptionPayloadFormatSize;
 };
 
-CSteamLeaderboardWriter::CSteamLeaderboardWriter( KeyValues *pViewDescription, KeyValues *pViewData ) :
+CSteamLeaderboardWriter::CSteamLeaderboardWriter( KeyValues *pViewDescription, KeyValues *pViewData, ISteamUserStats *pSteamUserStats ) :
 	m_pViewDescription( pViewDescription->MakeCopy() ),
 	m_pViewData( pViewData->MakeCopy() ),
 	m_nViewDescriptionPayloadFormatSize( 0 )
@@ -50,9 +50,9 @@ CSteamLeaderboardWriter::CSteamLeaderboardWriter( KeyValues *pViewDescription, K
 	SteamAPICall_t hCall;
 	
 	if ( m_pViewDescription->GetBool( ":nocreate" ) )
-		hCall = steamapicontext->SteamUserStats()->FindLeaderboard( m_pViewData->GetName() );
+		hCall = pSteamUserStats->FindLeaderboard( m_pViewData->GetName() );
 	else
-		hCall = steamapicontext->SteamUserStats()->FindOrCreateLeaderboard(
+		hCall = pSteamUserStats->FindOrCreateLeaderboard(
 			m_pViewData->GetName(),
 			( ELeaderboardSortMethod ) m_pViewDescription->GetInt( ":sort" ),
 			( ELeaderboardDisplayType ) m_pViewDescription->GetInt( ":format" ) );
@@ -64,7 +64,8 @@ CSteamLeaderboardWriter::CSteamLeaderboardWriter( KeyValues *pViewDescription, K
 
 void CSteamLeaderboardWriter::Steam_OnLeaderboardFindResult( LeaderboardFindResult_t *p, bool bError )
 {
-	if ( bError )
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	if ( bError || !p || !pSteamUserStats )
 	{
 		Warning( "Failed to contact leaderboard server for '%s'\n", m_pViewData->GetName() );
 		delete this;
@@ -138,11 +139,17 @@ void CSteamLeaderboardWriter::Steam_OnLeaderboardFindResult( LeaderboardFindResu
 
 	if ( bHasSum )
 	{
-		CSteamID steamID = steamapicontext->SteamUser()->GetSteamID();
+		ISteamUser *pSteamUser = steamapicontext ? steamapicontext->SteamUser() : NULL;
+		if ( !pSteamUser )
+		{
+			delete this;
+			return;
+		}
+		CSteamID steamID = pSteamUser->GetSteamID();
 
 		// We need to download this user's current leaderboard data first.
 		DevMsg( "Downloading score for leaderboard '%s', steam id '%llu'...\n", m_pViewData->GetName(), steamID.ConvertToUint64() );
-		SteamAPICall_t hCall = steamapicontext->SteamUserStats()->DownloadLeaderboardEntriesForUsers( p->m_hSteamLeaderboard, &steamID, 1 );
+		SteamAPICall_t hCall = pSteamUserStats->DownloadLeaderboardEntriesForUsers( p->m_hSteamLeaderboard, &steamID, 1 );
 		m_CallbackOnLeaderboardScoresDownloaded.Set( hCall, this, &CSteamLeaderboardWriter::Steam_OnLeaderboardScoresDownloaded );
 	}
 	else
@@ -153,7 +160,7 @@ void CSteamLeaderboardWriter::Steam_OnLeaderboardFindResult( LeaderboardFindResu
 
 void CSteamLeaderboardWriter::Steam_OnLeaderboardScoreUploaded( LeaderboardScoreUploaded_t *p, bool bError )
 {
-	if ( bError )
+	if ( bError || !p )
 	{
 		Warning( "Failed to upload leaderboard score for '%s'\n", m_pViewData->GetName() );
 	}
@@ -175,7 +182,8 @@ void CSteamLeaderboardWriter::Steam_OnLeaderboardScoreUploaded( LeaderboardScore
 
 void CSteamLeaderboardWriter::Steam_OnLeaderboardScoresDownloaded( LeaderboardScoresDownloaded_t *p, bool bError )
 {
-	if ( bError )
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	if ( bError || !p || !pSteamUserStats )
 	{
 		Warning( "Failed to download leaderboard score for '%s'\n", m_pViewData->GetName() );
 		delete this;
@@ -191,7 +199,7 @@ void CSteamLeaderboardWriter::Steam_OnLeaderboardScoresDownloaded( LeaderboardSc
 		// We have the one entry we were looking for, so extract the current data from it.
 		LeaderboardEntry_t leaderboardEntry;
 		int32 *pPayloadData = new int32[m_nViewDescriptionPayloadFormatSize];
-		if ( steamapicontext->SteamUserStats()->GetDownloadedLeaderboardEntry( p->m_hSteamLeaderboardEntries, 0, &leaderboardEntry, pPayloadData, m_nViewDescriptionPayloadFormatSize ) )
+		if ( pSteamUserStats->GetDownloadedLeaderboardEntry( p->m_hSteamLeaderboardEntries, 0, &leaderboardEntry, pPayloadData, m_nViewDescriptionPayloadFormatSize ) )
 		{
 			unsigned char *pCurrentPayload = (unsigned char*)pPayloadData;
 
@@ -327,6 +335,13 @@ void CSteamLeaderboardWriter::Steam_OnLeaderboardScoresDownloaded( LeaderboardSc
 
 void CSteamLeaderboardWriter::UploadScore(SteamLeaderboard_t leaderboardHandle)
 {
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	if ( !pSteamUserStats )
+	{
+		delete this;
+		return;
+	}
+
 	unsigned char *pvPayloadPtr = (unsigned char *)m_pViewData->GetPtr( ":payloadptr" );
 	int nPayloadSize = m_pViewData->GetInt( ":payloadsize" );
 
@@ -412,7 +427,7 @@ void CSteamLeaderboardWriter::UploadScore(SteamLeaderboard_t leaderboardHandle)
 	DevMsg( "Uploading score for leaderboard '%s'...\n", m_pViewData->GetName() );
 	KeyValuesDumpAsDevMsg( m_pViewData, 1 );
 
-	SteamAPICall_t hCall = steamapicontext->SteamUserStats()->UploadLeaderboardScore(
+	SteamAPICall_t hCall = pSteamUserStats->UploadLeaderboardScore(
 		leaderboardHandle,
 		( ELeaderboardUploadScoreMethod ) m_pViewDescription->GetInt( ":upload" ),
 		nScore,
@@ -438,10 +453,14 @@ CSteamLeaderboardWriter::~CSteamLeaderboardWriter()
 void Steam_WriteLeaderboardData( KeyValues *pViewDescription, KeyValues *pViewData )
 {
 	MEM_ALLOC_CREDIT();
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	ISteamUser *pSteamUser = steamapicontext ? steamapicontext->SteamUser() : NULL;
+	if ( !pViewDescription || !pViewData || !pSteamUserStats || !pSteamUser )
+		return;
 
 	// CSteamLeaderboardWriter is driven by Steam callbacks and will
 	// delete itself when finished
-	new CSteamLeaderboardWriter( pViewDescription, pViewData );
+	new CSteamLeaderboardWriter( pViewDescription, pViewData, pSteamUserStats );
 }
 
 

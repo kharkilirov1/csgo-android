@@ -8,7 +8,7 @@
 #include "optionssubdifficulty.h"
 #include "tier1/convar.h"
 #include "engineinterface.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 
 #include "vgui_controls/RadioButton.h"
 

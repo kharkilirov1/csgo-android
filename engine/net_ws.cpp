@@ -837,6 +837,7 @@ LOOPBACK BUFFERS FOR LOCAL PLAYER
 
 void NET_SendLoopPacket (int sock, int length, const unsigned char *data )
 {
+	{ static int s_n = 0; if ( s_n < 40 ) printf( "LPB: send sock=%d len=%d\n", sock, length ); s_n++; }
 	// Never loop on anything other than client/server
 	if ( sock != NS_CLIENT && sock != NS_SERVER )
 		return;
@@ -1346,6 +1347,7 @@ bool NET_GetLong( const int sock, netpacket_t *packet )
 
 bool NET_GetLoopPacket ( netpacket_t * packet )
 {
+	{ static int s_n = 0; if ( s_n < 60 ) printf( "LPB: get src=%d\n", packet ? (int)packet->source : -1 ); s_n++; }
 	Assert ( packet );
 
 	loopback_t	*loop = NULL;

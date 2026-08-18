@@ -353,6 +353,12 @@ CDmxElement* CDmxSerializer::UnserializeElementIndex( CUtlBuffer &buf, CUtlVecto
 
 	Assert( nElementIndex < elementList.Count() );
 	Assert( nElementIndex >= 0 || nElementIndex == ELEMENT_INDEX_NULL );
+#ifdef ANDROID
+	if ( nElementIndex >= elementList.Count() || ( nElementIndex >= 0 && !elementList[ nElementIndex ] ) )
+	{
+		return NULL;
+	}
+#endif
 	if ( nElementIndex < 0 || !elementList[ nElementIndex ] )
 		return NULL;
 

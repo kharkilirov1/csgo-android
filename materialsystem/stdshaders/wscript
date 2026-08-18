@@ -110,6 +110,9 @@ def build(bld):
 		'unlittwotexture_dx9.cpp',
 		'vertexlitgeneric_dx9.cpp',
 		'vertexlitgeneric_dx9_helper.cpp',
+		# vertexlitgeneric_dx9_helper.cpp calls into the Phong path
+		# (DrawPhong_DX9 / InitPhong_DX9), so this has to build with it.
+		'phong_dx9_helper.cpp',
 		'volume_clouds.cpp',
 		'volume_clouds_helper.cpp',
 		'vortwarp_dx9.cpp',

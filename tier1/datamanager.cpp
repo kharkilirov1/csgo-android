@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -49,9 +49,10 @@ unsigned int CDataManagerBase::FlushAllUnlocked()
 {
 	Lock();
 
+	// heap: tens of thousands of cached resources at level transition would
+	// overflow the ~1MB engine worker stacks
 	int nFlush = m_memoryLists.Count( m_lruList );
-	void **pScratch = (void **)stackalloc( nFlush * sizeof(void *) );
-	CUtlVector<void *> destroyList( pScratch, nFlush );
+	CUtlVector<void *> destroyList( 0, nFlush );
 
 	unsigned nBytesInitial = MemUsed_Inline();
 
@@ -87,8 +88,7 @@ unsigned int CDataManagerBase::FlushAll()
 	Lock();
 
 	int nFlush = m_memoryLists.Count( m_lruList ) + m_memoryLists.Count( m_lockList );
-	void **pScratch = (void **) stackalloc( nFlush * sizeof(void *) );
-	CUtlVector<void *> destroyList( pScratch, nFlush );
+	CUtlVector<void *> destroyList( 0, nFlush );
 
 	unsigned result = MemUsed_Inline();
 	int node;

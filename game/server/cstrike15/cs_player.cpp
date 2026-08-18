@@ -38,7 +38,7 @@
 #include "weapon_decoy.h"
 #include "weapon_sensorgrenade.h"
 //#include "weapon_carriable_item.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "engine/IEngineSound.h"
 #include "bot.h"
 #include "studio.h"
@@ -58,7 +58,7 @@
 #include "datacache/imdlcache.h"
 #include "npcevent.h"
 #include "cs_gamestats.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "cs_achievement_constants.h"
 #include "cs_simple_hostage.h"
 #include "cs_weapon_parse.h"
@@ -5862,7 +5862,11 @@ void CCSPlayer::AddAccountAward( PlayerCashAward::Type reason, int amount, const
 		// if award amount is non-default, use the verbose message.
 		if ( pWeapon && ( amount != cash_player_killed_enemy_default.GetInt() ))
 		{
-			szWeaponName = pWeapon->GetEconItemView()->GetItemDefinition()->GetItemBaseName();
+			// offline stub-econ: item view or definition may be missing
+			const CEconItemView *pAwardView = pWeapon ? pWeapon->GetEconItemView() : NULL;
+			const CEconItemDefinition *pAwardDef = pAwardView ? pAwardView->GetItemDefinition() : NULL;
+			if ( pAwardDef )
+				szWeaponName = pAwardDef->GetItemBaseName();
 			awardReasonToken = "#Player_Cash_Award_Killed_Enemy";
 		}
 

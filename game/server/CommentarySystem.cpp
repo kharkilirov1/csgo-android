@@ -10,7 +10,7 @@
 #include "tier0/icommandline.h"
 #include "igamesystem.h"
 #include "filesystem.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "in_buttons.h"
 #include "engine/IEngineSound.h"
 #include "soundenvelope.h"
@@ -18,7 +18,7 @@
 #include "isaverestore.h"
 #include "eventqueue.h"
 #include "saverestore_utlvector.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "ai_basenpc.h"
 #include "Sprite.h"
 #include "point_template.h"

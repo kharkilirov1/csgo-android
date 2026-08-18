@@ -236,6 +236,7 @@ void CEngine::Unload( void )
 //-----------------------------------------------------------------------------
 bool CEngine::Load( bool dedicated, const char *rootdir )
 {
+	printf( "ENG: CEngine::Load\n" );
 	bool success = false;
 
 	// Activate engine
@@ -417,6 +418,7 @@ extern void PS3_PollSaveSystem();
 //-----------------------------------------------------------------------------
 void CEngine::Frame( void )
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "FRM: CEngine::Frame #%d\n", s_n - 1 ); }
 	// yield the CPU for a little while when paused, minimized, or not the focus
 	// FIXME:  Move this to main windows message pump?
 	static ConVarRef cl_embedded_stream_video_playing( "cl_embedded_stream_video_playing" );

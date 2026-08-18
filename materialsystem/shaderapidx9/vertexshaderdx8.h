@@ -16,6 +16,7 @@
 // **IMPORTANT**: if you are trying to use DYNAMIC_SHADER_COMPILE in a RELEASE build, you *must* modify the .vpc file to re-enable the /FC compiler option, otherwise the __FILE__ macro won't work properly in
 // GetShaderSourcePath() and shader files won't be found.
 //#define DYNAMIC_SHADER_COMPILE
+//#define DYNAMIC_SHADER_COMPILE
 
 // uncomment to get spew about what combos are being compiled.
 //#define DYNAMIC_SHADER_COMPILE_VERBOSE

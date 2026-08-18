@@ -18,7 +18,7 @@ SQInteger error_handler(HSQUIRRELVM v);
 
 HSQREMOTEDBG sq_rdbg_init(HSQUIRRELVM v,unsigned short port,SQBool autoupdate)
 {
-#ifndef _GAMECONSOLE
+#if !defined( _GAMECONSOLE ) && !defined( ANDROID ) && !defined( _ANDROID ) && !defined( __ANDROID__ )
 	sockaddr_in bindaddr;
 #ifdef _WIN32
 	WSADATA wsadata;
@@ -45,6 +45,9 @@ HSQREMOTEDBG sq_rdbg_init(HSQUIRRELVM v,unsigned short port,SQBool autoupdate)
 	
     return rdbg;
 #else
+	(void)v;
+	(void)port;
+	(void)autoupdate;
 	return NULL;
 #endif
 }

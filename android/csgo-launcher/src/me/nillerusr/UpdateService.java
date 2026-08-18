@@ -43,7 +43,7 @@ public class UpdateService extends Service {
 		notif.contentView = new RemoteViews(getPackageName(), R.layout.update_notify);
 
 		Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(extras.get("update_url").toString()));
-		PendingIntent pIntent = PendingIntent.getActivity(this, 0, browserIntent, 0);
+		PendingIntent pIntent = PendingIntent.getActivity(this, 0, browserIntent, PendingIntent.FLAG_IMMUTABLE);
 
 		notif.contentIntent = pIntent;
 		notif.flags |= Notification.FLAG_AUTO_CANCEL;

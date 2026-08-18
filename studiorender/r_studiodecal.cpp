@@ -1330,16 +1330,23 @@ void CStudioRender::AddDecal( StudioDecalHandle_t hDecal, const StudioRenderCont
 		return;
 	}
 
-	if ( !IsGameConsole() )
+#if defined( ANDROID )
+	// Engine threads get ~1MB stacks and the summed LOD vertex count reaches
+	// hundreds of KB - always take the heap path.
+	const bool bDecalBuildOnStack = false;
+#else
+	const bool bDecalBuildOnStack = !IsGameConsole();
+#endif
+	if ( bDecalBuildOnStack )
 	{
-		buildInfo.m_pMeshVertices = (MeshVertexInfo_t*)stackalloc( nMeshCount * sizeof(MeshVertexInfo_t) );	
+		buildInfo.m_pMeshVertices = (MeshVertexInfo_t*)stackalloc( nMeshCount * sizeof(MeshVertexInfo_t) );
 		int nVertexCount = ComputeVertexAllocation( iMaxLOD, body, list.m_pHardwareData, buildInfo.m_pMeshVertices );
 		buildInfo.m_pVertexBuffer = (DecalBuildVertexInfo_t*)stackalloc( nVertexCount * sizeof(DecalBuildVertexInfo_t) );
 	}
 	else
 	{
 		// Don't allocate on the stack
-		buildInfo.m_pMeshVertices = (MeshVertexInfo_t*)malloc( nMeshCount * sizeof(MeshVertexInfo_t) );	
+		buildInfo.m_pMeshVertices = (MeshVertexInfo_t*)malloc( nMeshCount * sizeof(MeshVertexInfo_t) );
 		int nVertexCount = ComputeVertexAllocation( iMaxLOD, body, list.m_pHardwareData, buildInfo.m_pMeshVertices );
 		buildInfo.m_pVertexBuffer = (DecalBuildVertexInfo_t*)malloc( nVertexCount * sizeof(DecalBuildVertexInfo_t) );
 	}
@@ -1514,7 +1521,7 @@ void CStudioRender::AddDecal( StudioDecalHandle_t hDecal, const StudioRenderCont
 		++m_nDecalId;
 	}
 
-	if ( IsGameConsole() )
+	if ( !bDecalBuildOnStack )
 	{
 		free( buildInfo.m_pMeshVertices );
 		free( buildInfo.m_pVertexBuffer );

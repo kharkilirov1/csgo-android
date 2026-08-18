@@ -25,8 +25,7 @@ def build(bld):
 		'builtin_particle_render_ops.cpp',
 		'particle_sort.cpp',		
 		'particle_snapshot.cpp',
-		'particles.cpp',
-		'psheet.cpp'
+		'particles.cpp'
 	]
 
 	includes = [

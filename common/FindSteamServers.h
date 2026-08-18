@@ -55,7 +55,7 @@
 #endif
 
 #include <limits.h>
-#include "SteamCommon.h"
+#include "steamcommon.h"
 
 /******************************************************************************
 **

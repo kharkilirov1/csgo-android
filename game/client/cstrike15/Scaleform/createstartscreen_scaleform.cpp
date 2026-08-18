@@ -21,7 +21,7 @@
 #ifdef _X360
 #include "xbox/xbox_launch.h"
 #endif
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "engineinterface.h"
 #include "modinfo.h"
 #include "gameui_interface.h"

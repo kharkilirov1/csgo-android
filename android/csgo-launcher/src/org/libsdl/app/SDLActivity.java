@@ -210,35 +210,37 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         mCurrentNativeState = NativeState.INIT;
     }
 
-	final static int REQUEST_PERMISSIONS = 42;
+    private void showStartupError(int messageResource) {
+        mBrokenLibraries = true;
+        mSingleton = this;
+        SDL.setContext(null);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setTitle(R.string.srceng_launcher_error);
+        dialog.setMessage(messageResource);
 
-	public void applyPermissions( final String permissions[], final int code ) {
-		List<String> requestPermissions = new ArrayList<String>();
-		for( int i = 0; i < permissions.length; i++ ) {
-			if( checkSelfPermission(permissions[i]) != PackageManager.PERMISSION_GRANTED )
-				requestPermissions.add(permissions[i]);
-		}
+        if (messageResource == R.string.srceng_launcher_error_find_gameinfo) {
+            dialog.setNegativeButton(R.string.srceng_launcher_set,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface ignored, int id) {
+                        Intent intent = new Intent(SDLActivity.this, DirchActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        mSingleton.finish();
+                    }
+                });
+        }
 
-		if( !requestPermissions.isEmpty() ) {
-			String[] requestPermissionsArray = new String[requestPermissions.size()];
-			for( int i = 0; i < requestPermissions.size(); i++ )
-				requestPermissionsArray[i] = requestPermissions.get(i);
-			requestPermissions(requestPermissionsArray, code);
-		}
-	}
-
-	public void onRequestPermissionsResult( int requestCode,  String[] permissions,  int[] grantResults ) {
-		if( requestCode == REQUEST_PERMISSIONS ) {
-			for( int grantResult : grantResults ) {
-				if( grantResult == PackageManager.PERMISSION_DENIED ) {
-					Toast.makeText( this, R.string.srceng_launcher_error_no_permission, Toast.LENGTH_LONG ).show();
-					finish();
-					return;
-				}
-			}
-			init();
-		}
-	}
+        dialog.setPositiveButton(R.string.srceng_launcher_ok,
+            new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface ignored, int id) {
+                    mSingleton.finish();
+                }
+            });
+        dialog.setCancelable(false);
+        dialog.create().show();
+    }
 
     public void init()
     {
@@ -292,32 +294,8 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         }
 
 
-        if( !ValveActivity2.preInit(this, getIntent()) )
-        {
-        	mBrokenLibraries = true; // Funny hack, but should work
-            mSingleton = this;
-            AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
-            dlgAlert.setTitle(getResources().getString(R.string.srceng_launcher_error));
-            dlgAlert.setMessage(getResources().getString(R.string.srceng_launcher_error_find_gameinfo));
-            dlgAlert.setNegativeButton(R.string.srceng_launcher_set, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int id) {
-                	Intent intent = new Intent(SDLActivity.this, DirchActivity.class);
-					intent.addFlags(268435456);
-					startActivity(intent);
-                    mSingleton.finish();
-                }
-            });
-
-            dlgAlert.setPositiveButton(R.string.srceng_launcher_ok, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int id) {
-                    mSingleton.finish();
-                }
-            });
-            dlgAlert.setCancelable(false);
-            dlgAlert.create().show();
-
+        if (!ValveActivity2.preInit(this, getIntent())) {
+            showStartupError(ValveActivity2.getStartupErrorResource(getIntent()));
             return;
         }
 
@@ -332,7 +310,10 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         SDL.setContext(this);
 
         Intent intent = getIntent();
-        ValveActivity2.initNatives(this, getIntent());
+        if (!ValveActivity2.initNatives(this, intent)) {
+            showStartupError(ValveActivity2.getStartupErrorResource(intent));
+            return;
+        }
 
         mClipboardHandler = new SDLClipboardHandler();
 
@@ -396,12 +377,10 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         mIsInitCalled = false;
 
-        if( Build.VERSION.SDK_INT >= 23 )
-            applyPermissions( new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO }, REQUEST_PERMISSIONS );
-
-        if( checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED && 
-            checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED )
-            init();
+        // LauncherActivity gates direct game-file access before starting this
+        // non-exported Activity. Audio capture is optional and must not block
+        // the engine when the user denies RECORD_AUDIO.
+        init();
     }
 
     protected void pauseNativeThread() {
@@ -554,16 +533,27 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
            return;
         }
 
-        if (SDLActivity.mSDLThread != null) {
+        final Thread sdlThread = SDLActivity.mSDLThread;
+        if (sdlThread != null) {
 
             // Send Quit event to "SDLThread" thread
             SDLActivity.nativeSendQuit();
 
-            // Wait for "SDLThread" thread to end
+            // Never wait forever on Android's main thread.  A native engine
+            // stuck during startup or rendering otherwise turns Back/finish
+            // into a guaranteed ANR.
             try {
-                SDLActivity.mSDLThread.join();
-            } catch(Exception e) {
+                sdlThread.join(2000);
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
                 Log.v(TAG, "Problem stopping SDLThread: " + e);
+            }
+
+            if (sdlThread.isAlive()) {
+                Log.w(TAG, "SDLThread did not stop within 2000 ms; terminating game process");
+                super.onDestroy();
+                android.os.Process.killProcess(android.os.Process.myPid());
+                return;
             }
         }
 
@@ -1631,6 +1621,20 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
             activity.requestPermissions(new String[]{permission}, requestCode);
         } else {
             nativePermissionResult(requestCode, true);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // Android_JNI_RequestPermission waits until this result reaches SDL.
+        // A cancelled dialog is a denial; do not call native code when the
+        // libraries never initialized successfully.
+        if (!SDLActivity.mBrokenLibraries) {
+            boolean granted = grantResults.length > 0 &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            SDLActivity.nativePermissionResult(requestCode, granted);
         }
     }
 

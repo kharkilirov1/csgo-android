@@ -71,7 +71,7 @@
 #include "interfaces/interfaces.h"
 
 #include "gametypes.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "c_cs_team.h"
 
 #include "Scaleform/HUD/sfhudinfopanel.h"
@@ -3645,7 +3645,11 @@ void C_CSPlayer::RecordAmmoForRound( void )
 
 		if ( pWeapon )
 		{
-			m_roundEndAmmoCount.nPrimaryWeaponDefIndex = pWeapon->GetEconItemView()->GetItemDefinition()->GetDefinitionIndex();
+			{
+				const CEconItemView *pAmmoView = pWeapon->GetEconItemView();
+				const CEconItemDefinition *pItemDef = pAmmoView ? pAmmoView->GetItemDefinition() : NULL;
+				m_roundEndAmmoCount.nPrimaryWeaponDefIndex = pItemDef ? pItemDef->GetDefinitionIndex() : 0;
+			}
 			m_roundEndAmmoCount.nPrimaryWeaponAmmoCount = pWeapon->Clip1() + pWeapon->GetReserveAmmoCount( AMMO_POSITION_PRIMARY );
 		}
 
@@ -3653,7 +3657,11 @@ void C_CSPlayer::RecordAmmoForRound( void )
 		pWeapon = Weapon_GetSlot( WEAPON_SLOT_PISTOL );
 		if ( pWeapon )
 		{
-			m_roundEndAmmoCount.nSecondaryWeaponDefIndex = pWeapon->GetEconItemView()->GetItemDefinition()->GetDefinitionIndex();
+			{
+				const CEconItemView *pAmmoView = pWeapon->GetEconItemView();
+				const CEconItemDefinition *pItemDef = pAmmoView ? pAmmoView->GetItemDefinition() : NULL;
+				m_roundEndAmmoCount.nSecondaryWeaponDefIndex = pItemDef ? pItemDef->GetDefinitionIndex() : 0;
+			}
 			m_roundEndAmmoCount.nSecondaryWeaponAmmoCount = pWeapon->Clip1() + pWeapon->GetReserveAmmoCount( AMMO_POSITION_PRIMARY );
 		}
 	}

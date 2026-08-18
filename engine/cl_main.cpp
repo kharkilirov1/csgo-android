@@ -1585,7 +1585,7 @@ void CL_RegisterResources( void )
 class CEngineReliableAvatarCallback_t
 {
 public:
-	CEngineReliableAvatarCallback_t() : m_steamID( Steam3Client().SteamUser()->GetSteamID() )
+	CEngineReliableAvatarCallback_t() : m_steamID( ( Steam3Client().SteamUser() ) ? Steam3Client().SteamUser()->GetSteamID() : CSteamID() )
 		, m_CallbackPersonaStateChanged( this, &CEngineReliableAvatarCallback_t::Steam_OnPersonaStateChanged )
 		, m_CallbackAvatarImageLoaded( this, &CEngineReliableAvatarCallback_t::Steam_OnAvatarImageLoaded )
 	{
@@ -3166,12 +3166,14 @@ unsigned int CL_GetStartupIndex()
 //-----------------------------------------------------------------------------
 void CL_GetStartupImage( char *pOutBuffer, int nOutBufferSize )
 {
-#if defined( CSTRIKE15)
+#if defined( CSTRIKE15) || defined( ANDROID )
 	// CStrike15 uses a specific startup image instead of the random image.
 	// CSGO always uses a widescreen format image, regardless of the screen resolution,
 	// to match how the Scaleform background is drawn.  CVideoMode_Common::DrawStartupGraphic
 	// takes care of repositioning and scaling this image to match the method
 	// used in Scaleform.
+	// The engine module builds without CSTRIKE15, but the Android port only
+	// ships CS:GO, whose content has no Portal 2 startup images.
 	V_strncpy( pOutBuffer, "console/background01_widescreen", nOutBufferSize );
 #else
 	const AspectRatioInfo_t &aspectRatioInfo = materials->GetAspectRatioInfo();

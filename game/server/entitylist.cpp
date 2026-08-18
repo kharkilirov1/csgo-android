@@ -10,7 +10,7 @@
 #include "utlvector.h"
 #include "igamesystem.h"
 #include "collisionutils.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 #include "tier0/vprof.h"
 #include "mapentities.h"
 #include "client.h"

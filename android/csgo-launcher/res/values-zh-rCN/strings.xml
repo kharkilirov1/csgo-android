@@ -18,6 +18,8 @@ XMR(Monero):48iXvX61MU24m5VGc77rXQYKmoww3dZh6hn7mEwDaLVTfGhyBKq2teoPpeBq6xvqj4it
     <string name="srceng_launcher_error_missing_obb_b">路径上的文件</string>
     <string name="srceng_launcher_error_test_write">测试写入失败，所有文件将存储在</string>
     <string name="srceng_launcher_error_no_permission">没有权限，游戏就无法运行</string>
+    <string name="srceng_launcher_error_missing_weapon_content">CS:GO 游戏文件不完整。本应用不包含 CS:GO 游戏数据。请选择合法取得的 CS:GO 1.36.0.2 内容文件夹，其中应包含 scripts/weapon_manifest.txt 及其列出的全部明文 .txt 武器脚本，包括 scripts/weapon_healthshot.txt。</string>
+    <string name="srceng_launcher_error_unsupported_content_overlay">暂不支持自动 CS:GO 内容覆盖层。启动前请移除或合并同级 xlsppatch、update 或活动的 csgo_dlc* 文件夹。</string>
     <string name="srceng_launcher_command_args">命令行参数</string>
     <string name="srceng_launcher_env">环境变量</string>
     <string name="srceng_launcher_game_path">游戏资源路径</string>

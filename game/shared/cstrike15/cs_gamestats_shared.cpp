@@ -6,7 +6,7 @@
 
 #include "cbase.h"
 #ifdef GAME_DLL
-#include "GameStats.h"
+#include "gamestats.h"
 #endif
 #include "cs_gamestats_shared.h"
 

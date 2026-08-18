@@ -8,7 +8,7 @@
 
 #include "IOcclusionSystem.h"
 #include "mathlib/vector.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 #include "utllinkedlist.h"
 #include "utlvector.h"
 #include "collisionutils.h"

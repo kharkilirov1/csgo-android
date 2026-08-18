@@ -10,7 +10,7 @@
 
 #include <vgui/ISurface.h>
 #include <vgui/IScheme.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 
 #include <vgui_controls/Image.h>
 #include <vgui_controls/ExpandButton.h>

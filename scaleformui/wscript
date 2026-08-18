@@ -1,0 +1,48 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+from waflib import Utils
+import os
+
+top = '.'
+PROJECT_NAME = 'scaleformui'
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	# The real Scaleform backend needs Autodesk GFx, which is proprietary, has
+	# been discontinued and has no ARM64 build. Only the stub is built here so
+	# that ScaleformUI() resolves to a harmless no-op instead of NULL.
+	source = [
+		'scaleformui_stub.cpp',
+		'../public/tier0/memoverride.cpp'
+	]
+
+	includes = [
+		'.',
+		'../public',
+		'../public/tier0',
+		'../public/tier1',
+		'../common',
+	]
+
+	libs = ['tier0', 'tier1', 'vstdlib', 'interfaces']
+
+	install_path = bld.env.LIBDIR
+
+	bld.shlib(
+		source   = source,
+		target   = PROJECT_NAME,
+		name     = PROJECT_NAME,
+		features = 'c cxx',
+		includes = includes,
+		defines  = [],
+		use      = libs,
+		install_path = install_path,
+		subsystem = bld.env.MSVC_SUBSYSTEM,
+		idx      = bld.get_taskgen_count()
+	)

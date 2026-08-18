@@ -36,6 +36,7 @@ struct vphysics_save_cphysicsobject_t
 	bool	asleepSinceCreation;		// has this been asleep since creation?
 	bool	hasTouchedDynamic;
 	bool	hasShadowController;
+	bool	useAlternateGravity;
 	short	collideType;
 	unsigned short	gameIndex;
 	int		hingeAxis;
@@ -48,6 +49,7 @@ struct vphysics_save_cphysicsobject_t
 
 	unsigned int	callbacks;
 	unsigned int	gameFlags;
+	uint32			collisionHints;
 
 	unsigned int	contentsMask;
 
@@ -115,7 +117,7 @@ public:
 	void			WakeNow();
 	void			Sleep();
 	void			RecheckCollisionFilter();
-	void			RecheckContactPoints();
+	void			RecheckContactPoints( bool bSearchForNewContacts = false );
 
 	void			SetMass( float mass );
 	float			GetMass( void ) const;
@@ -136,6 +138,15 @@ public:
 	void			SetContents( unsigned int contents );
 
 	float			GetSphereRadius() const;
+	void			SetSphereRadius( float radius );
+
+	// CS:GO-era additions.
+	void			SetUseAlternateGravity( bool bSet );
+	void			SetCollisionHints( uint32 collisionHints );
+	uint32			GetCollisionHints() const { return m_collisionHints; }
+	IPredictedPhysicsObject *GetPredictedInterface( void ) const;
+	void			SyncWith( IPhysicsObject *pOther );
+
 	Vector			GetMassCenterLocalSpace() const;
 	float			GetEnergy() const;
 
@@ -245,6 +256,7 @@ private:
 	bool			m_hasTouchedDynamic : 1;
 	bool			m_asleepSinceCreation : 1;
 	bool			m_forceSilentDelete : 1;
+	bool			m_useAlternateGravity : 1;
 	unsigned char	m_sleepState : 2;
 	unsigned char	m_hingedAxis : 3;
 	unsigned char	m_collideType : 3;
@@ -256,6 +268,7 @@ private:
 
 	unsigned short	m_callbacks;
 	unsigned short	m_gameFlags;
+	uint32			m_collisionHints;
 	unsigned int	m_contentsMask;
 	
 	float			m_volume;

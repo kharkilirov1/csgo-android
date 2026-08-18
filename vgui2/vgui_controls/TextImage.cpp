@@ -18,7 +18,7 @@
 #include <vgui/IScheme.h>
 #include <vgui/IInput.h>
 #include <vgui/ILocalize.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 
 #include <vgui_controls/TextImage.h>
 #include <vgui_controls/Controls.h>

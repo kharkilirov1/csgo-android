@@ -12,6 +12,7 @@
 #include "tier1/strtools.h" 
 #include "vphysics/constraints.h"
 #include "vphysics/vehicles.h"
+#include "vphysics/collision_set.h"
 #include "filesystem_helpers.h"
 #include "bspfile.h"
 #include "utlbuffer.h"
@@ -61,6 +62,8 @@ public:
 	void		ParseRagdollConstraint( constraint_ragdollparams_t *pConstraint, IVPhysicsKeyHandler *unknownKeyHandler );
 	void		ParseSurfaceTable( int *table, IVPhysicsKeyHandler *unknownKeyHandler );
 	void		ParseSurfaceTablePacked( CUtlVector<char> &out );
+	void		ParseCollisionRules( ragdollcollisionrules_t *pRules, IVPhysicsKeyHandler *unknownKeyHandler );
+	void		ParseRagdollAnimatedFriction( ragdollanimatedfriction_t *pFriction, IVPhysicsKeyHandler *unknownKeyHandler );
 	void		ParseVehicle( vehicleparams_t *pVehicle, IVPhysicsKeyHandler *unknownKeyHandler );
 	void		ParseCustom( void *pCustom, IVPhysicsKeyHandler *unknownKeyHandler );
 	void		SkipBlock( void ) { ParseCustom(NULL, NULL); }
@@ -372,6 +375,111 @@ void CVPhysicsParse::ParseSurfaceTable( int *table, IVPhysicsKeyHandler *unknown
 		if ( tableIndex >= 0 && tableIndex < 128 )
 		{
 			table[tableIndex] = propIndex;
+		}
+	}
+}
+
+// Parses a "collisionrules" block. The caller has already run
+// ragdollcollisionrules_t::Defaults(), so pCollisionSet is valid here and
+// bSelfCollisions defaults to true; don't clear the struct.
+void CVPhysicsParse::ParseCollisionRules( ragdollcollisionrules_t *pRules, IVPhysicsKeyHandler *unknownKeyHandler )
+{
+	char key[MAX_KEYVALUE], value[MAX_KEYVALUE];
+
+	key[0] = 0;
+	if ( unknownKeyHandler )
+	{
+		unknownKeyHandler->SetDefaults( pRules );
+	}
+
+	while ( m_pText )
+	{
+		m_pText = ParseKeyvalue( m_pText, key, value );
+		if ( key[0] == '}' )
+		{
+			NextBlock();
+			return;
+		}
+
+		if ( !Q_stricmp( key, "selfcollisions" ) )
+		{
+			// keys are "0" or "1"
+			const int selfCollisions = atoi( value );
+			Assert( selfCollisions == 0 || selfCollisions == 1 );
+			if ( selfCollisions == 0 || selfCollisions == 1 )
+			{
+				pRules->bSelfCollisions = selfCollisions;
+			}
+		}
+		else if ( !Q_stricmp( key, "collisionpair" ) )
+		{
+			// keys are "%d,%d" - the pair of solid indices allowed to collide
+			if ( pRules->pCollisionSet )
+			{
+				int j0, j1;
+				if ( sscanf( value, "%d,%d", &j0, &j1 ) == 2 &&
+					j0 >= 0 && j0 < 32 && j1 >= 0 && j1 < 32 )
+				{
+					pRules->pCollisionSet->EnableCollisions( j0, j1 );
+				}
+			}
+		}
+		else
+		{
+			if ( unknownKeyHandler )
+			{
+				unknownKeyHandler->ParseKeyValue( pRules, key, value );
+			}
+		}
+	}
+}
+
+// Parses an "animatedfriction" block (ragdoll friction ramp over time).
+void CVPhysicsParse::ParseRagdollAnimatedFriction( ragdollanimatedfriction_t *pFriction, IVPhysicsKeyHandler *unknownKeyHandler )
+{
+	char key[MAX_KEYVALUE], value[MAX_KEYVALUE];
+
+	key[0] = 0;
+	if ( unknownKeyHandler )
+	{
+		unknownKeyHandler->SetDefaults( pFriction );
+	}
+
+	while ( m_pText )
+	{
+		m_pText = ParseKeyvalue( m_pText, key, value );
+		if ( key[0] == '}' )
+		{
+			NextBlock();
+			return;
+		}
+
+		if ( !Q_stricmp( key, "animfrictionmin" ) )
+		{
+			pFriction->minFriction = atof( value );
+		}
+		else if ( !Q_stricmp( key, "animfrictionmax" ) )
+		{
+			pFriction->maxFriction = atof( value );
+		}
+		else if ( !Q_stricmp( key, "animfrictiontimein" ) )
+		{
+			pFriction->timeIn = atof( value );
+		}
+		else if ( !Q_stricmp( key, "animfrictiontimeout" ) )
+		{
+			pFriction->timeOut = atof( value );
+		}
+		else if ( !Q_stricmp( key, "animfrictiontimehold" ) )
+		{
+			pFriction->timeHold = atof( value );
+		}
+		else
+		{
+			if ( unknownKeyHandler )
+			{
+				unknownKeyHandler->ParseKeyValue( pFriction, key, value );
+			}
 		}
 	}
 }

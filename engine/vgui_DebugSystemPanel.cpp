@@ -22,7 +22,7 @@
 #include <vgui_controls/PropertyPage.h>
 #include <vgui_controls/PropertyDialog.h>
 #include <vgui_controls/PropertySheet.h>
-#include "tier1/commandbuffer.h"
+#include "tier1/CommandBuffer.h"
 #include "tier1/tier1.h"
 
 // memdbgon must be the last include file in a .cpp file!!!

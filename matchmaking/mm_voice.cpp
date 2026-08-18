@@ -77,8 +77,12 @@ bool CMatchVoice::CanPlaybackTalker( XUID xuidTalker )
 // Whether we are explicitly muting a remote player
 bool CMatchVoice::IsTalkerMuted( XUID xuidTalker )
 {
-#if defined( _PS3 ) && !defined( NO_STEAM )
-	if ( steamapicontext->SteamFriends()->GetUserRestrictions() )
+#if !defined(NO_STEAM) && !defined( SWDS )
+	ISteamFriends *pSteamFriends = steamapicontext ? steamapicontext->SteamFriends() : NULL;
+#endif
+
+#if defined( _PS3 ) && !defined( NO_STEAM ) && !defined( SWDS )
+	if ( pSteamFriends && pSteamFriends->GetUserRestrictions() )
 	{
 		MMVOICEMSG( "IsTalkerMuted(0x%llX)=true(GetUserRestrictions)\n", xuidTalker );
 		return true;
@@ -86,9 +90,9 @@ bool CMatchVoice::IsTalkerMuted( XUID xuidTalker )
 #endif
 
 #if !defined(NO_STEAM) && !defined( SWDS )
-	if ( FriendRelationshipMute( steamapicontext->SteamFriends()->GetFriendRelationship( xuidTalker ) ) )
+	if ( pSteamFriends && FriendRelationshipMute( pSteamFriends->GetFriendRelationship( xuidTalker ) ) )
 	{
-		MMVOICEMSG( "IsTalkerMuted(0x%llX)=true(GetFriendRelationship=0x%X)\n", xuidTalker, steamapicontext->SteamFriends()->GetFriendRelationship( xuidTalker ) );
+		MMVOICEMSG( "IsTalkerMuted(0x%llX)=true(GetFriendRelationship=0x%X)\n", xuidTalker, pSteamFriends->GetFriendRelationship( xuidTalker ) );
 		return true;
 	}
 
@@ -105,9 +109,9 @@ bool CMatchVoice::IsTalkerMuted( XUID xuidTalker )
 	xuidTalker = RemapTalkerXuid( xuidTalker );
 
 #if !defined(NO_STEAM) && !defined( SWDS )
-	if ( FriendRelationshipMute( steamapicontext->SteamFriends()->GetFriendRelationship( xuidTalker ) ) )
+	if ( pSteamFriends && FriendRelationshipMute( pSteamFriends->GetFriendRelationship( xuidTalker ) ) )
 	{
-		MMVOICEMSG( "IsTalkerMuted(0x%llX/0x%llX)=true(GetFriendRelationship=0x%X)\n", xuidTalker, xuidOriginal, steamapicontext->SteamFriends()->GetFriendRelationship( xuidTalker ) );
+		MMVOICEMSG( "IsTalkerMuted(0x%llX/0x%llX)=true(GetFriendRelationship=0x%X)\n", xuidTalker, xuidOriginal, pSteamFriends->GetFriendRelationship( xuidTalker ) );
 		return true;
 	}
 #endif
@@ -385,11 +389,14 @@ bool CMatchVoice::IsMachineMutingLocalTalkers( XUID xuidPlayer )
 bool CMatchVoice::IsVoiceRecording()
 {
 #if !defined(_X360) && !defined(NO_STEAM) && !defined( SWDS )
+	ISteamUser *pSteamUser = steamapicontext ? steamapicontext->SteamUser() : NULL;
+	if ( !pSteamUser )
+		return false;
 
 #ifdef _PS3
-	EVoiceResult res = steamapicontext->SteamUser()->GetAvailableVoice( NULL, NULL, 11025 );
+	EVoiceResult res = pSteamUser->GetAvailableVoice( NULL, NULL, 11025 );
 #else
-	EVoiceResult res = steamapicontext->SteamUser()->GetAvailableVoice( NULL, NULL, 0 );
+	EVoiceResult res = pSteamUser->GetAvailableVoice( NULL, NULL, 0 );
 #endif
 
 	switch ( res )
@@ -409,10 +416,14 @@ bool CMatchVoice::IsVoiceRecording()
 void CMatchVoice::SetVoiceRecording( bool bRecordingEnabled )
 {
 #if !defined(_X360) && !defined(NO_STEAM) && !defined( SWDS )
+	ISteamUser *pSteamUser = steamapicontext ? steamapicontext->SteamUser() : NULL;
+	if ( !pSteamUser )
+		return;
+
 	if ( bRecordingEnabled )
-		steamapicontext->SteamUser()->StartVoiceRecording();
+		pSteamUser->StartVoiceRecording();
 	else
-		steamapicontext->SteamUser()->StopVoiceRecording();
+		pSteamUser->StopVoiceRecording();
 #endif
 }
 

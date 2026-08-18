@@ -18,6 +18,7 @@ def configure(conf):
 def build(bld):
 	source = [
 		'inputsystem.cpp',
+		'inputstacksystem.cpp',
 		'joystick_sdl.cpp',
 		'touch_sdl.cpp',
 		'key_translation.cpp',

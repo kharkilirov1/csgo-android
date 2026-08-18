@@ -423,6 +423,16 @@ def build(bld):
 
 	defines = []
 
+	# The CS:GO port: client and server already carry CSGO/CSTRIKE15, but the
+	# engine was imported without them. CS:GO-specific #ifdefs in the engine
+	# (console parenting in vgui_baseui_interface.cpp, host/client paths,
+	# console.cpp, ...) silently compiled the wrong branches - notably the
+	# non-CS:GO game-console SetParent(staticGameUIPanel->GetVPanel()) call,
+	# which truncates a 64-bit VPANEL to the interface's 32-bit int and then
+	# crashes dereferencing the mangled pointer. Match the upstream CS:GO
+	# build here so those branches compile out.
+	defines += ['CSGO=1', 'CSTRIKE15=1']
+
 	libs = ['tier0','interfaces','vgui_controls','dmxloader','videocfg','tier1','tier2','tier3','bitmap','vstdlib','appframework','datamodel','vtf','mathlib','steam_api','matsys_controls','BZ2','SDL2','JPEG','ZLIB','OPENAL','CURL','protobuf' ]
 
 	if bld.env.DEST_OS == 'android':
@@ -436,7 +446,10 @@ def build(bld):
 			'osrng.cpp', 'pch.cpp', 'pkcspad.cpp', 'pubkey.cpp', 'queue.cpp',
 			'randpool.cpp', 'rdtables.cpp', 'rijndael.cpp', 'rng.cpp',
 			'rsa.cpp', 'sha.cpp', 'simple.cpp', 'skipjack.cpp', 'strciphr.cpp',
-			'trdlocal.cpp'
+			'trdlocal.cpp',
+			# Provides the SecBlock allocator instantiations that dll.cpp
+			# normally supplies; clang/lld need them explicitly (see file).
+			'secblock_instantiate.cpp'
 		]
 		bld.stlib(
 			source = ['../external/crypto++-5.61/' + item for item in cryptopp_sources],
@@ -449,10 +462,13 @@ def build(bld):
 			idx = bld.get_taskgen_count()
 		)
 		includes += ['../external/crypto++-5.61']
+		# xboxsystem.cpp stays in: its PC-stub CXboxSystem provides
+		# XBOXSYSTEM_INTERFACE_VERSION, which server/client/gameui DLLInit all
+		# hard-require - without it startup dies right after Game.dll loads.
 		for android_excluded_source in [
 			'matchmakinghost.cpp', 'matchmakingqos.cpp', 'matchmakingclient.cpp',
 			'matchmakingshared.cpp', 'matchmakingmigrate.cpp', 'Session.cpp',
-			'sys_mainwind.cpp', 'xboxsystem.cpp', 'masterserver.cpp'
+			'sys_mainwind.cpp', 'masterserver.cpp'
 		]:
 			if android_excluded_source in source:
 				source.remove(android_excluded_source)

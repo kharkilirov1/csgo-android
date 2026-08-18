@@ -6031,6 +6031,7 @@ uint32 CEconItemSchema::CalculateKeyValuesVersion( KeyValues *pKV )
 //-----------------------------------------------------------------------------
 bool CEconItemSchema::BInitSchema( KeyValues *pKVRawDefinition, CUtlVector<CUtlString> *pVecErrors /* = NULL */ )
 {
+	printf( "ECON: BInitSchema begin\n" );
 #if !defined( GC_DLL )
 	m_unVersion = CalculateKeyValuesVersion( pKVRawDefinition );
 #endif

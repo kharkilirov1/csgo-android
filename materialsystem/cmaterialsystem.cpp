@@ -2194,6 +2194,13 @@ void CMaterialSystem::ReadConfigFromConVars( MaterialSystem_Config_t *pConfig )
 	mat_dxlevel.SetValue( nDxLevel );
 
 	pConfig->skipMipLevels = mat_picmip.GetInt();
+#ifdef __ANDROID__
+	// Port floor: low-RAM phones cannot afford full-resolution VTFs;
+	// config files proved unreliable to deliver picmip, so clamp it here.
+	if ( pConfig->skipMipLevels < 2 )
+		pConfig->skipMipLevels = 2;
+	mat_picmip.SetValue( pConfig->skipMipLevels );
+#endif
 
 	pConfig->m_fMonitorGamma = mat_monitorgamma.GetFloat();
 	pConfig->m_fGammaTVRangeMin = mat_monitorgamma_tv_range_min.GetFloat();

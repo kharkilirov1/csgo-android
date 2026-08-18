@@ -30,8 +30,8 @@ ILauncherMgr *g_pLauncherMgr = NULL;
 #include "tier0/icommandline.h"
 #include "tier0/dbg.h"
 #include "filesystem.h"
-#include <vgui/vgui.h>
-#include <color.h>
+#include <vgui/VGUI.h>
+#include <Color.h>
 #include "shaderapi/ishaderapi.h"
 #include "utlvector.h"
 #include "Clip2D.h"
@@ -44,7 +44,7 @@ ILauncherMgr *g_pLauncherMgr = NULL;
 #include "Input.h"
 #include <vgui/IHTML.h>
 #include <vgui/IVGui.h>
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "vgui_surfacelib/fonttexturecache.h"
 #include "MatSystemSurface.h"
 #include "inputsystem/iinputsystem.h"
@@ -1083,6 +1083,14 @@ void CMatSystemSurface::InternalSetMaterial( IMaterial *pMaterial )
 		pMaterial = m_pWhite;
 	}
 
+#ifdef ANDROID
+	if ( !pMaterial )
+	{
+		m_pMesh = NULL;
+		return;
+	}
+#endif
+
 	CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
 	m_pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, pMaterial );
 }
@@ -1369,6 +1377,10 @@ void CMatSystemSurface::DrawQuadArray( int quadCount, Vertex_t *pVerts, unsigned
 		}
 
 		meshBuilder.End();
+#ifdef ANDROID
+		if ( !m_pMesh )
+			return;
+#endif
 		m_pMesh->Draw();
 
 		nFirstQuad += quadCount;

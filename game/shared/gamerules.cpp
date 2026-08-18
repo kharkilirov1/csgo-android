@@ -8,7 +8,7 @@
 #include "gamerules.h"
 #include "ammodef.h"
 #include "tier0/vprof.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "usermessages.h"
 #ifdef CLIENT_DLL
 
@@ -24,7 +24,7 @@
 	#include "voice_gamemgr.h"
 	#include "globalstate.h"
 	#include "player_resource.h"
-#include "GameStats.h"
+#include "gamestats.h"
 
 #endif
 

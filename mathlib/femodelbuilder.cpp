@@ -1,7 +1,7 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 #include "mathlib/femodelbuilder.h"
 #include "tier1/utlhashtable.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "tier1/heapsort.h"
 #include "bitvec.h"
 #include "tier1/utlpair.h"

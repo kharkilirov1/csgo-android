@@ -11,7 +11,7 @@
 #pragma once
 #endif
 
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "utlrbtree.h"
 #include "utlmap.h"
 #include "bitmap/texturepacker.h"

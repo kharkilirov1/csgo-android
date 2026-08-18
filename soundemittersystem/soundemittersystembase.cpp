@@ -5,7 +5,7 @@
 //===========================================================================//
 
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "filesystem.h"
 #include "utldict.h"
 #include "tier2/interval.h"
@@ -274,8 +274,12 @@ bool CSoundEmitterSystemBase::LoadGameSoundManifest()
 		}
 		else
 		{
+#ifdef ANDROID
+			Warning( "Unable to load manifest file '%s' (continuing without sounds)\n", MANIFEST_FILE );
+#else
 			Error( "Unable to load manifest file '%s'\n", MANIFEST_FILE );
-		}		
+#endif
+		}
 	}
 	manifest->deleteThis();
 

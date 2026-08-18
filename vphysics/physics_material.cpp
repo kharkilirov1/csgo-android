@@ -13,6 +13,7 @@
 #include "utlsymbol.h"
 #include "tier1/strtools.h" 
 #include "vcollide_parse_private.h"
+#include "vphysics_saverestore.h"
 #include "ctype.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -129,6 +130,8 @@ public:
 	virtual const char *GetString( unsigned short stringTableIndex ) const;
 	virtual const char *GetPropName( int surfaceDataIndex ) const;
 	virtual void SetWorldMaterialIndexTable( int *pMapArray, int mapSize );
+	// Save/restore ops that remap surface material indices across a load.
+	virtual ISaveRestoreOps* GetMaterialIndexDataOps() const { return ::MaterialIndexDataOps(); }
 	virtual int RemapIVPMaterialIndex( int ivpMaterialIndex ) const
 	{
 		return m_ivpManager.RemapIVPMaterialIndex( ivpMaterialIndex );
@@ -198,7 +201,7 @@ CPhysicsSurfaceProps::~CPhysicsSurfaceProps( void )
 
 int CPhysicsSurfaceProps::SurfacePropCount( void ) const
 {
-	return m_props.Size();
+	return m_props.Count();
 }
 
 // Add the filename to a list to make sure each file is only processed once
@@ -206,7 +209,7 @@ bool CPhysicsSurfaceProps::AddFileToDatabase( const char *pFilename )
 {
 	CUtlSymbol id = m_strings.AddString( pFilename );
 
-	for ( int i = 0; i < m_fileList.Size(); i++ )
+	for ( int i = 0; i < m_fileList.Count(); i++ )
 	{
 		if ( m_fileList[i] == id )
 			return false;
@@ -229,7 +232,7 @@ int CPhysicsSurfaceProps::GetSurfaceIndex( const char *pPropertyName ) const
 	if ( id.IsValid() )
 	{
 		// BUGBUG: Linear search is slow!!!
-		for ( int i = 0; i < m_props.Size(); i++ )
+		for ( int i = 0; i < m_props.Count(); i++ )
 		{
 			// NOTE: Just comparing strings by index is pretty fast though
 			if ( m_props[i].m_name == id )
@@ -260,7 +263,7 @@ CSurface *CPhysicsSurfaceProps::GetInternalSurface( int materialIndex )
 	{
 		materialIndex = GetReservedFallBack( materialIndex );
 	}
-	if ( materialIndex < 0 || materialIndex > m_props.Size()-1 )
+	if ( materialIndex < 0 || materialIndex > m_props.Count()-1 )
 	{
 		return NULL;
 	}
@@ -382,7 +385,7 @@ int	CPhysicsSurfaceProps::GetReservedFallBack( int materialIndex ) const
 int CPhysicsSurfaceProps::GetIVPMaterialIndex( const IVP_Material *pIVP ) const
 {
 	int index = (const CSurface *)pIVP - m_props.Base();
-	if ( index >= 0 && index < m_props.Size() )
+	if ( index >= 0 && index < m_props.Count() )
 		return index;
 
 	return -1;
@@ -503,13 +506,36 @@ int CPhysicsSurfaceProps::ParseSurfaceData( const char *pFileName, const char *p
 					prop.data.audio.hardThreshold = atof(value);
 				}
 				// sound names
+				// CS:GO split the single step sound into walk/run pairs. Legacy
+				// surfaceproperties only define "stepleft"/"stepright", so apply
+				// those to both gaits (otherwise run footsteps, which the game
+				// code reads from runStep*, would be silent). Content that
+				// distinguishes them can use the explicit keys below.
 				else if ( !strcmpi( key, "stepleft" ) )
 				{
-					prop.data.sounds.stepleft = m_strings.AddString( value );
+					prop.data.sounds.walkStepLeft = m_strings.AddString( value );
+					prop.data.sounds.runStepLeft = prop.data.sounds.walkStepLeft;
 				}
 				else if ( !strcmpi( key, "stepright" ) )
 				{
-					prop.data.sounds.stepright = m_strings.AddString( value );
+					prop.data.sounds.walkStepRight = m_strings.AddString( value );
+					prop.data.sounds.runStepRight = prop.data.sounds.walkStepRight;
+				}
+				else if ( !strcmpi( key, "walkstepleft" ) )
+				{
+					prop.data.sounds.walkStepLeft = m_strings.AddString( value );
+				}
+				else if ( !strcmpi( key, "walkstepright" ) )
+				{
+					prop.data.sounds.walkStepRight = m_strings.AddString( value );
+				}
+				else if ( !strcmpi( key, "runstepleft" ) )
+				{
+					prop.data.sounds.runStepLeft = m_strings.AddString( value );
+				}
+				else if ( !strcmpi( key, "runstepright" ) )
+				{
+					prop.data.sounds.runStepRight = m_strings.AddString( value );
 				}
 				else if ( !strcmpi( key, "impactsoft" ) )
 				{
@@ -581,7 +607,7 @@ int CPhysicsSurfaceProps::ParseSurfaceData( const char *pFileName, const char *p
 		prop.data.physics.friction = 0.8f;
 		m_shadowFallback = m_props.AddToTail( prop );
 	}
-	return m_props.Size();
+	return m_props.Count();
 }
 
 

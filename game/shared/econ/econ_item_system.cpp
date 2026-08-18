@@ -5,7 +5,7 @@
 //=============================================================================
 
 #include "cbase.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "econ_gcmessages.h"
 #include "econ_item_system.h"
 #include "econ_item_inventory.h"
@@ -95,6 +95,24 @@ CEconItemSystem::~CEconItemSystem( void )
 //-----------------------------------------------------------------------------
 void CEconItemSystem::Init( void )
 {
+	if ( GetItemSchema()->GetVersion() == 0 )
+	{
+		KeyValuesAD pItemsGameKV( "ItemsGameFile" );
+		if ( pItemsGameKV->LoadFromFile( g_pFullFileSystem, "scripts/items/items_game.txt", "GAME" ) )
+		{
+			CUtlBuffer buffer;
+			pItemsGameKV->WriteAsBinary( buffer );
+			CUtlVector< CUtlString > vecErrors;
+			bool bSuccess = GetItemSchema()->BInitBinaryBuffer( buffer, &vecErrors );
+			Msg( "Offline item schema load: %s\n", bSuccess ? "ok" : "FAILED" );
+			if ( !bSuccess )
+			{
+					FOR_EACH_VEC( vecErrors, nError )
+						Warning( "%s\n", vecErrors[nError].Get() );
+			}
+		}
+	}
+
 #ifdef CLIENT_DLL
 	IGameEvent *event = gameeventmanager->CreateEvent( "item_schema_initialized" );
 	if ( event )

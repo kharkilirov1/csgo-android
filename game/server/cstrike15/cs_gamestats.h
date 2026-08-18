@@ -12,7 +12,7 @@
 #endif
 
 #include "cs_blackmarket.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "cs_gamestats_shared.h"
 #include "GameEventListener.h"
 #include "weapon_csbase.h"
@@ -160,7 +160,9 @@ struct SWeaponShotData : public BaseStatData
 
 		if ( pWeapon )
 		{			
-			m_ui8WeaponID = (uint8)pWeapon->GetEconItemView()->GetItemIndex();
+			// Offline stub-econ can hand out a NULL item view.
+			const CEconItemView *pShotItemView = pWeapon->GetEconItemView();
+			m_ui8WeaponID = pShotItemView ? (uint8)pShotItemView->GetItemIndex() : 0;
 		}
 
 		if ( pPlayer )

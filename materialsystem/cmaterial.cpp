@@ -21,7 +21,7 @@
 #include <malloc.h>
 #endif //!_PS3
 #include "filesystem.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "mempool.h"
 #include "shaderapi/ishaderutil.h"
 #include "vtf/vtf.h"
@@ -382,7 +382,9 @@ private:
 	CInterlockedInt		m_RefCount;
 	unsigned short		m_Flags;
 
-	unsigned char		m_VarCount;
+	// wide enough that AddMaterialVar's post-increment can't wrap (a wrap
+	// made realloc(p, 0) free the array and then wrote through it)
+	unsigned short		m_VarCount;
 	unsigned char		m_ProxyCount;
 
 	IMaterialVar**		m_pShaderParams;

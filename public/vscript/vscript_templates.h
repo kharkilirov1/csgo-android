@@ -76,42 +76,14 @@ template <typename FUNCPTR_TYPE>
 inline ScriptFunctionBindingStorageType_t ScriptConvertFreeFuncPtrToVoid( FUNCPTR_TYPE pFunc )
 {
 #if defined(_PS3) || defined(POSIX)
-	COMPILE_TIME_ASSERT( sizeof( FUNCPTR_TYPE ) == sizeof( void* ) * 2 || sizeof( FUNCPTR_TYPE ) == sizeof( void* ) );
-	
-	if ( sizeof( FUNCPTR_TYPE ) == 4 )
-	{
-		union FuncPtrConvertMI
-		{
-			FUNCPTR_TYPE pFunc;
-			ScriptFunctionBindingStorageType_t stype;
-		};
-
-		FuncPtrConvertMI convert;
-		convert.pFunc = pFunc;
-		return convert.stype;
-	}
-	else
-	{
-		union FuncPtrConvertMI
-		{
-			FUNCPTR_TYPE pFunc;
-			struct
-			{
-				ScriptFunctionBindingStorageType_t stype;
-				intptr_t iToc;
-			} fn8;
-		};
-
-		FuncPtrConvertMI convert;
-		convert.fn8.iToc = 0;
-		convert.pFunc = pFunc;
-		if ( !convert.fn8.iToc )
-			return convert.fn8.stype;
-		
-		Assert( 0 );
-		DebuggerBreak();
-		return 0;
-	}
+	// The storage is two words wide on POSIX, so the full Itanium
+	// pointer-to-member (address + this-adjustment) round-trips; the old
+	// single-word pack DebuggerBreak()'d on any non-zero adjustment.
+	COMPILE_TIME_ASSERT( sizeof( FUNCPTR_TYPE ) <= sizeof( ScriptFunctionBindingStorageType_t ) );
+	ScriptFunctionBindingStorageType_t stype;
+	memset( &stype, 0, sizeof( stype ) );
+	memcpy( &stype, &pFunc, sizeof( pFunc ) );
+	return stype;
 #else
 	return ( ScriptFunctionBindingStorageType_t ) pFunc;
 #endif
@@ -121,41 +93,11 @@ template <typename FUNCPTR_TYPE>
 inline FUNCPTR_TYPE ScriptConvertFreeFuncPtrFromVoid( ScriptFunctionBindingStorageType_t p )
 {
 #if defined(_PS3) || defined(POSIX)
-	COMPILE_TIME_ASSERT( sizeof( FUNCPTR_TYPE ) == sizeof(void*)*2 || sizeof( FUNCPTR_TYPE ) == sizeof(void*) );
-
-	if ( sizeof( FUNCPTR_TYPE ) == 4 )
-	{
-		union FuncPtrConvertMI
-		{
-			FUNCPTR_TYPE pFunc;
-			ScriptFunctionBindingStorageType_t stype;
-		};
-
-		FuncPtrConvertMI convert;
-		convert.pFunc = 0;
-		convert.stype = p;
-		return convert.pFunc;
-	}
-	else
-	{
-		union FuncPtrConvertMI
-		{
-			FUNCPTR_TYPE pFunc;
-			struct
-			{
-				ScriptFunctionBindingStorageType_t stype;
-				intptr_t iToc;
-			} fn8;
-		};
-
-		FuncPtrConvertMI convert;
-		convert.pFunc = 0;
-		convert.fn8.stype = p;
-		convert.fn8.iToc = 0;
-		return convert.pFunc;
-	}
-
-
+	COMPILE_TIME_ASSERT( sizeof( FUNCPTR_TYPE ) <= sizeof( ScriptFunctionBindingStorageType_t ) );
+	FUNCPTR_TYPE pFunc;
+	memset( &pFunc, 0, sizeof( pFunc ) );
+	memcpy( &pFunc, &p, sizeof( pFunc ) );
+	return pFunc;
 #else
 	return (FUNCPTR_TYPE) p;
 #endif

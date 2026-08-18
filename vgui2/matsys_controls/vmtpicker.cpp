@@ -14,7 +14,7 @@
 #include "vgui_controls/Panel.h"
 #include "matsys_controls/sheetsequencepanel.h"
 #include "bitmap/psheet.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 
 // NOTE: This has to be the last file included!
 #include "tier0/memdbgon.h"

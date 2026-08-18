@@ -15,7 +15,7 @@
 #include "vgui_baseui_interface.h"
 #include "tier2/tier2.h"
 #include "inputsystem/iinputsystem.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "host.h"
 #include "filesystem.h"
 #include "filesystem_engine.h"
@@ -1319,7 +1319,7 @@ void Key_Event( const InputEvent_t &event )
 			return;
 #endif
 	}
-#if defined ( CSTRIKE15 )
+#if defined ( CSTRIKE15 ) && defined( INCLUDE_SCALEFORM )
 	else if ( g_ClientDLL->IsChatRaised() || g_ClientDLL->IsBindMenuRaised() )
 	{
 		if ( FilterKey( event, KEY_UP_SCALEFORM, HandleScaleformKey ) )

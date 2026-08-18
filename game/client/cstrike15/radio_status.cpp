@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -234,8 +234,13 @@ bool CRadioStatus::Init()
 		m_pHeadLabelMaterial = materials->FindMaterial( "sprites/radio", TEXTURE_GROUP_VGUI );
 	}
 
+#ifdef ANDROID
+	if ( IsErrorMaterial( m_pHeadLabelMaterial ) )
+		return true;	// sprites/radio missing in reduced content; radio status is cosmetic
+#else
 	if ( IsErrorMaterial( m_pHeadLabelMaterial ) && !g_bTextMode )
 		return false;
+#endif
 
 	m_pHeadLabelMaterial->IncrementReferenceCount();
 

@@ -47,7 +47,7 @@
 #include "tier1/callqueue.h"
 #include "filesystem/IQueuedLoader.h"
 #include "tier2/tier2.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "tier1/lzmaDecoder.h"
 #include "ipooledvballocator.h"
 #include "tier3/tier3.h"

@@ -1692,7 +1692,8 @@ bool CIndexBufferDx8::Lock( int nMaxIndexCount, bool bAppend, IndexDesc_t &desc 
 	pLockedData = ( ( unsigned char * )pLockedData + m_nFirstUnwrittenOffset );
 #endif
 
-	if ( FAILED( hr ) )
+	// togles returns S_OK from Lock even when the mapping failed
+	if ( FAILED( hr ) || !pLockedData )
 	{
 		FailedLock( "Failed to lock index buffer in CIndexBufferDx8::LockIndexBuffer\n" );
 		goto indexBufferLockFailed;
@@ -2111,7 +2112,8 @@ bool CVertexBufferDx8::Lock( int nMaxVertexCount, bool bAppend, VertexDesc_t &de
 	pLockedData = (unsigned char*)pLockedData + m_nFirstUnwrittenOffset;
 #endif
 
-	if ( FAILED( hr ) )
+	// togles returns S_OK from Lock even when the mapping failed
+	if ( FAILED( hr ) || !pLockedData )
 	{
 		// Check if paged pool is in critical state ( < 5% free )
 		PAGED_POOL_INFO_t ppi;
@@ -3150,6 +3152,12 @@ void CMeshDX8::ModifyBeginEx( bool bReadOnly, int nFirstVertex, int nVertexCount
 		m_LockVertexBufferSize = nVertexCount * desc.m_ActualVertexSize;
 		m_LockVertexBuffer = pVertexMemory;
 #endif
+	}
+	else
+	{
+		// A failed Modify used to leave the vertex half of desc as stack
+		// garbage - wild writes. Point every field at the dummy instead.
+		g_MeshMgr.ComputeVertexDescription( 0, 0, desc );
 	}
 
 	desc.m_nFirstVertex = nFirstVertex;
@@ -5236,25 +5244,33 @@ void CMeshMgr::Init()
 	m_DynamicFlexMesh.Init( 1 );
 
 	// The dynamic index buffer
+	Msg( "MeshMgr::Init: dynamic index buffer\n" );
 	m_pDynamicIndexBuffer = new CIndexBuffer( Dx9Device(), INDEX_BUFFER_SIZE, ShaderAPI()->UsingSoftwareVertexProcessing(), true );
 
 	// If we're running in vs3.0, allocate a vertexID buffer
+	Msg( "MeshMgr::Init: vertexID buffer\n" );
 	CreateVertexIDBuffer();
+	Msg( "MeshMgr::Init: zero vertex buffer\n" );
 	CreateZeroVertexBuffer();
+	Msg( "MeshMgr::Init: empty color buffer\n" );
 	CreateEmptyColorBuffer();
 
 	// If we're running in vs3.0, allocate index and vertex buffers for pre-tessellated patches
+	Msg( "MeshMgr::Init: pre-tess patch buffers\n" );
 	CreatePreTessPatchIndexBuffers();
 	CreatePreTessPatchVertexBuffers();
 
 	// Track these 2 allocations as well.
 	g_VBAllocTracker->TrackMeshAllocations( "CreateDynamicIndexBuffers" );
+	Msg( "MeshMgr::Init: dynamic IB allocate\n" );
 	m_DynamicIndexBuffer.Allocate();
 	g_VBAllocTracker->TrackMeshAllocations( NULL );
 
 	g_VBAllocTracker->TrackMeshAllocations( "CreateDynamicVertexBuffers" );
+	Msg( "MeshMgr::Init: dynamic VB allocate\n" );
 	m_DynamicVertexBuffer.Allocate();
 	g_VBAllocTracker->TrackMeshAllocations( NULL );
+	Msg( "MeshMgr::Init: done\n" );
 }
 
 void CMeshMgr::Shutdown()
@@ -5328,7 +5344,12 @@ void CMeshMgr::FillVertexIDBuffer( CVertexBuffer *pVertexIDBuffer, int nCount )
 
 	// Fill the buffer with the values 0->(nCount-1)
 	int nBaseVertexIndex = 0;
-	float *pBuffer = (float*)pVertexIDBuffer->Lock( nCount, nBaseVertexIndex );	
+	float *pBuffer = (float*)pVertexIDBuffer->Lock( nCount, nBaseVertexIndex );
+	if ( !pBuffer )
+	{
+		Warning( "FillVertexIDBuffer: Lock failed!\n" );
+		return;
+	}
 	for ( int i = 0; i < nCount; ++i )
 	{
 		*pBuffer++ = (float)i;
@@ -5425,7 +5446,6 @@ void CMeshMgr::FillPreTessPatchIB( CIndexBuffer* pIndexBuffer, int iSubdivLevel,
 		return;
 
     unsigned short iVertIndex = 0;
-    UINT iIndex = 0;
     for( int v = 0; v < iSubdivLevel; v++ )
     {
         iVertIndex = ( unsigned short )( ( iSubdivLevel + 1 ) * ( iSubdivLevel - v ) );
@@ -5439,8 +5459,10 @@ void CMeshMgr::FillPreTessPatchIB( CIndexBuffer* pIndexBuffer, int iSubdivLevel,
         }
         if( v != iSubdivLevel - 1 )
         {
-            // add a degenerate tri for stripping
-            *pIndices = pIndices[iIndex - 1];
+            // add a degenerate tri for stripping: repeat the previous index.
+            // (was pIndices[iIndex - 1] with unsigned iIndex == 0 - an 8GB
+            // out-of-bounds read that only "worked" on 32-bit via pointer wrap)
+            *pIndices = pIndices[-1];
             pIndices ++;
             *pIndices = ( unsigned short )( ( iSubdivLevel + 1 ) * ( iSubdivLevel - ( v + 1 ) ) );
             pIndices ++;
@@ -5510,6 +5532,11 @@ void CMeshMgr::FillEmptyColorBuffer( CVertexBuffer *pEmptyColorBuffer, int nCoun
 	// Fill the buffer with the values 0->(nCount-1)
 	int nBaseVertexIndex = 0;
 	D3DCOLOR *pBuffer = (D3DCOLOR*)pEmptyColorBuffer->Lock( nCount, nBaseVertexIndex );
+	if ( !pBuffer )
+	{
+		Warning( "FillEmptyColorBuffer: Lock failed!\n" );
+		return;
+	}
 	memset( pBuffer, 0, nCount * sizeof(D3DCOLOR) );
 	pEmptyColorBuffer->Unlock( nCount );
 }
@@ -5561,6 +5588,7 @@ void CMeshMgr::CreatePreTessPatchIndexBuffers()
 		{
 			int iSubdivLevel = i + 1;
 			int nIndexCount = GetNumIndicesForSubdivisionLevel( iSubdivLevel );
+			Msg( "MeshMgr::Init: pre-tess IB %d (n=%d)\n", i, nIndexCount );
 			m_pPreTessPatchIndexBuffer[i] = new CIndexBuffer( Dx9Device(), nIndexCount, ShaderAPI()->UsingSoftwareVertexProcessing(), false );
 
 			FillPreTessPatchIB( m_pPreTessPatchIndexBuffer[i], iSubdivLevel, nIndexCount );
@@ -5589,6 +5617,7 @@ void CMeshMgr::CreatePreTessPatchVertexBuffers()
 			int nVertexCount = iSubdivLevel + 1;
 			nVertexCount *= nVertexCount;
 
+			Msg( "MeshMgr::Init: pre-tess VB %d (n=%d)\n", i, nVertexCount );
 			m_pPreTessPatchVertexBuffer[i] = new CVertexBuffer( Dx9Device(), 0, 0, sizeof( PreTessPatchVertex_t ),
 				nVertexCount, TEXTURE_GROUP_STATIC_VERTEX_BUFFER_OTHER, ShaderAPI()->UsingSoftwareVertexProcessing() );
 
@@ -5940,6 +5969,12 @@ void CMeshMgr::CopyStaticMeshIndexBufferToTempMeshIndexBuffer( CTempMeshDX8 *pDs
 	CIndexBuffer *srcIndexBuffer = pSrcIndexMesh->GetIndexBuffer();
 	int dummy = 0;
 	unsigned short *srcIndexArray = srcIndexBuffer->Lock( false, nIndexCount, dummy, 0 );
+	if ( !srcIndexArray )
+	{
+		Warning( "CopyStaticMeshIndexBufferToTempMeshIndexBuffer: lock failed\n" );
+		dstMeshBuilder.End();
+		return;
+	}
 	int i;
 	for( i = 0; i < nIndexCount; i++ )
 	{

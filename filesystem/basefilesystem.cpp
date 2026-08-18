@@ -10,7 +10,7 @@
 #include "tier1/characterset.h"
 #include "tier1/utlbuffer.h"
 #include "tier1/convar.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "tier0/icommandline.h"
 #include "tier0/stacktools.h"
 #include "generichash.h"

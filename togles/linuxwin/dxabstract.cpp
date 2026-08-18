@@ -2021,6 +2021,8 @@ HRESULT IDirect3DQuery9::GetData(void* pData,DWORD dwSize,DWORD dwGetDataFlags)
 
 HRESULT IDirect3DDevice9::CreateVertexBuffer(UINT Length,DWORD Usage,DWORD FVF,D3DPOOL Pool,IDirect3DVertexBuffer9** ppVertexBuffer,VD3DHANDLE* pSharedHandle)
 {
+	{ static int s_n = 0; if ( ( s_n++ % 100 ) == 0 && Length < 65536 ) printf( "VBC: len=%d usage=0x%x pool=%d ra0=%p ra1=%p ra2=%p\n", Length, Usage, Pool, __builtin_return_address(0), __builtin_return_address(1), __builtin_return_address(2) ); }
+
 	GL_BATCH_PERF_CALL_TIMER;
 	GLMPRINTF(( ">-A- IDirect3DDevice9::CreateVertexBuffer" ));
 	Assert( m_ctx->m_nCurOwnerThreadId == ThreadGetCurrentId() );
@@ -2382,7 +2384,11 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 		GLMPRINTF(("<-X- IDirect3DDevice9::Create (error out)"));
 		return (HRESULT) -1;
 	}
-	
+
+	// Boot breadcrumbs + glFinish: force the driver to execute each init step
+	// synchronously so a silent in-driver hang stops right after its label.
+	printf( "BOOT: GLM context created\n" );
+
 	// make an FBO to draw into and activate it.
 	m_ctx->m_drawingFBO = m_ctx->NewFBO();					
 				
@@ -2397,8 +2403,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	// we create two IDirect3DSurface9's.  These will be known as the internal render target 0 and the depthstencil.
 	
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making color render target..."));
+	printf( "BOOT: creating %ux%u backbuffer color RT\n", m_params.m_presentationParameters.BackBufferWidth, m_params.m_presentationParameters.BackBufferHeight );
 	// color surface
-	result = this->CreateRenderTarget( 
+	result = this->CreateRenderTarget(
 		m_params.m_presentationParameters.BackBufferWidth,			// width
 		m_params.m_presentationParameters.BackBufferHeight,			// height
 		m_params.m_presentationParameters.BackBufferFormat,			// format
@@ -2417,6 +2424,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 		// do not do an AddRef..
 
+	gGL->glFinish();
+	printf( "BOOT: backbuffer color RT ok\n" );
+
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making color render target complete -> %08x", m_pDefaultColorSurface ));
 
 	GLMPRINTF(("-X- IDirect3DDevice9::Create setting color render target..."));
@@ -2431,6 +2441,7 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	Assert (m_params.m_presentationParameters.EnableAutoDepthStencil);
 
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making depth-stencil..."));
+	printf( "BOOT: creating depth-stencil\n" );
     result = CreateDepthStencilSurface(
 		m_params.m_presentationParameters.BackBufferWidth,			// width
 		m_params.m_presentationParameters.BackBufferHeight,			// height
@@ -2448,6 +2459,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 		// do not do an AddRef here..
 
+	gGL->glFinish();
+	printf( "BOOT: depth-stencil ok\n" );
+
 	GLMPRINTF(("-X- IDirect3DDevice9::Create making depth-stencil complete -> %08x", m_pDefaultDepthStencilSurface));
 	GLMPRINTF(("-X- Direct3DDevice9::Create setting depth-stencil render target..."));
 	result = this->SetDepthStencilSurface(m_pDefaultDepthStencilSurface);
@@ -2461,7 +2475,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 
 	UpdateBoundFBO();
 
+	printf( "BOOT: checking FBO completeness\n" );
 	bool ready = m_ctx->m_drawingFBO->IsReady();
+	printf( "BOOT: FBO ready=%d\n", (int)ready );
 	if (!ready)
 	{
 		GLMPRINTF(("<-X- IDirect3DDevice9::Create (error out)"));
@@ -2469,7 +2485,9 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	}
 
 	// this next part really needs to be inside GLMContext.. or replaced with D3D style viewport setup calls.
+	printf( "BOOT: debug font tex\n" );
 	m_ctx->GenDebugFontTex();
+	gGL->glFinish();
 	
 	// blast the gl state mirror...
 	memset( &this->gl, 0, sizeof( this->gl ) );
@@ -2490,8 +2508,10 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	gl.m_CullFaceEnable		=	defCullFaceEnable;
 	gl.m_CullFrontFace		=	defCullFrontFace;
 		
+	printf( "BOOT: flushing initial GL state\n" );
 	FullFlushStates();
-	
+	gGL->glFinish();
+
 	GLMPRINTF(("<-X- IDirect3DDevice9::Create complete"));
 
 	// so GetClientRect can return sane answers
@@ -2512,12 +2532,14 @@ HRESULT	IDirect3DDevice9::Create( IDirect3DDevice9Params *params )
 	gGL->m_nTotalGLCycles = 0;
 	gGL->m_nTotalGLCalls = 0;
 
+	printf( "BOOT: dummy vertex buffer\n" );
 	m_pDummy_vtx_buffer = new CGLMBuffer( m_ctx, kGLMVertexBuffer, 4096, 0 );
 	m_vtx_buffers[0] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[1] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[2] = m_pDummy_vtx_buffer;
 	m_vtx_buffers[3] = m_pDummy_vtx_buffer;
-	
+
+	printf( "BOOT: device create done\n" );
 	return result;
 }
 
@@ -2931,6 +2953,7 @@ ConVar dxa_nullrefresh_capslock( "dxa_nullrefresh_capslock", "0" );
 
 HRESULT IDirect3DDevice9::Present(CONST RECT* pSourceRect,CONST RECT* pDestRect,VD3DHWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion)
 {
+	{ static int s_n = 0; if ( ( s_n++ % 300 ) == 0 ) printf( "PRS: D3D Present #%d\n", s_n - 1 ); }
 	GL_BATCH_PERF( g_nTotalD3DCalls++; )
 	GL_PUBLIC_ENTRYPOINT_CHECKS( this );
 			
@@ -3904,10 +3927,13 @@ HRESULT IDirect3DDevice9::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixe
 			}
 		}
 
-		g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslPixelShaderOptions, nShadowDepthSamplerMask, nCentroidMask, pDebugLabel );
+		if ( pFunction )
+		{
+			g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslPixelShaderOptions, nShadowDepthSamplerMask, nCentroidMask, pDebugLabel );
 			
-		transbuf.PutString( (char*)tempbuf.Base() );
-		transbuf.PutString( "\n\n" );	// whitespace
+			transbuf.PutString( (char*)tempbuf.Base() );
+			transbuf.PutString( "\n\n" );	// whitespace
+		}
 				
 		if ( bVertexShader )
 		{
@@ -4186,10 +4212,13 @@ HRESULT IDirect3DDevice9::CreateVertexShader(CONST DWORD* pFunction, IDirect3DVe
 			glslVertexShaderOptions |= D3DToGL_OptionGenerateBoneUniformBuffer;
 		}
 
-		g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslVertexShaderOptions, -1, nCentroidMask, pDebugLabel );
+		if ( pFunction )
+		{
+			g_D3DToOpenGLTranslatorGLSL.TranslateShader( (uint32 *) pFunction, &tempbuf, &bVertexShader, glslVertexShaderOptions, -1, nCentroidMask, pDebugLabel );
 			
-		transbuf.PutString( (char*)tempbuf.Base() );
-		transbuf.PutString( "\n\n" );	// whitespace
+			transbuf.PutString( (char*)tempbuf.Base() );
+			transbuf.PutString( "\n\n" );	// whitespace
+		}
 				
 		if ( !bVertexShader )
 		{
@@ -5339,6 +5368,7 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type, INT BaseV
 		UpdateBoundFBO();
 	}
 
+	{ static int s_nDIP = 0; if ( s_nDIP < 30 ) printf( "DIP: #%d type=%d prim=%d\n", s_nDIP++, Type, primCount ); }
 	g_nTotalDrawsOrClears++;
 
 #if GL_BATCH_PERF_ANALYSIS
@@ -5357,7 +5387,9 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type, INT BaseV
 #endif
 
 	if ( ( !m_indices.m_idxBuffer ) || ( !m_vertexShader ) )
+	{
 		goto draw_failed;
+	}
 	
 	{
 		GL_BATCH_PERF_CALL_TIMER;
@@ -5614,6 +5646,7 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitive( D3DPRIMITIVETYPE Type,INT BaseVe
 		UpdateBoundFBO();
 	}
 
+	{ static int s_nDIP = 0; if ( s_nDIP < 30 ) printf( "DIP: #%d type=%d prim=%d\n", s_nDIP++, Type, primCount ); }
 	g_nTotalDrawsOrClears++;
 
 #if GL_BATCH_PERF_ANALYSIS

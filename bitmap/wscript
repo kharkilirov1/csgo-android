@@ -25,10 +25,12 @@ def build(bld):
 		'floatcubemap.cpp',
 		'imageformat.cpp',
 		'psd.cpp',
+		'psheet.cpp',
 		'resample.cpp',
 		'tgaloader.cpp',
 		'tgawriter.cpp',
-		'bitmap.cpp'
+		'bitmap.cpp',
+		'texturepacker.cpp'
 	]
 	
 	if bld.env.DEST_OS == 'win32':

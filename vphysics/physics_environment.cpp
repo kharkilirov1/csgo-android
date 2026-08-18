@@ -31,6 +31,7 @@
 #include "ivp_mindist_intern.hxx"
 #include "ivp_friction.hxx"
 #include "ivp_anomaly_manager.hxx"
+#include "ivp_controller.hxx"
 #include "ivp_time.hxx"
 #include "ivp_listener_psi.hxx"
 #include "ivp_phantom.hxx"
@@ -1104,15 +1105,26 @@ static CVPhysicsDebugOverlay s_DefaultDebugOverlay;
 
 
 CPhysicsEnvironment::CPhysicsEnvironment( void )
+	: m_pPhysEnv( NULL )
+	, m_pDragController( NULL )
+	, m_pAlternateGravityController( NULL )
+	, m_pDebugOverlay( &s_DefaultDebugOverlay )
+	, m_alternateGravity( 0.0f, 0.0f, 0.0f )
+	, m_predictionCommandNum( 0 )
+	, m_bPredicted( false )
+	, m_pSleepEvents( NULL )
+	, m_pCollisionListener( NULL )
+	, m_pCollisionSolver( NULL )
+	, m_pConstraintListener( NULL )
+	, m_pDeleteQueue( NULL )
+	, m_lastObjectThisTick( 0 )
+	, m_deleteQuick( false )
+	, m_inSimulation( false )
+	, m_queueDeleteObject( false )
+	, m_fixedTimestep( true )
+	, m_enableConstraintNotify( false )
 // assume that these lists will have at least one object
 {
-	// set this to true to force the 
-	m_deleteQuick = false;
-	m_queueDeleteObject = false;
-	m_inSimulation = false;
-	m_fixedTimestep = true;	// try to simulate using fixed timesteps
-	m_enableConstraintNotify = false;
-
     // build a default environment
     IVP_Environment_Manager *env_manager;
     env_manager = IVP_Environment_Manager::get_environment_manager();
@@ -1157,12 +1169,16 @@ CPhysicsEnvironment::CPhysicsEnvironment( void )
 	END_IVP_ALLOCATION();
 
 	m_pDragController = new CDragController;
+	m_pAlternateGravityController = new IVP_Standard_Gravity_Controller;
+	IVP_U_Point defaultGravity;
+	defaultGravity.set( m_pPhysEnv->get_gravity() );
+	m_pAlternateGravityController->set_standard_gravity( &defaultGravity );
+	ConvertPositionToHL( defaultGravity, m_alternateGravity );
 
 	physics_performanceparams_t perf;
 	perf.Defaults();
 	SetPerformanceSettings( &perf );
 	m_pPhysEnv->client_data = (void *)this;
-	m_lastObjectThisTick = 0;
 }
 
 CPhysicsEnvironment::~CPhysicsEnvironment( void )
@@ -1196,6 +1212,7 @@ CPhysicsEnvironment::~CPhysicsEnvironment( void )
 
 	delete m_pSleepEvents;
 	delete m_pDragController;
+	delete m_pAlternateGravityController;
 	delete m_pPhysEnv;
 	delete m_pDeleteQueue;
 
@@ -1271,6 +1288,107 @@ void CPhysicsEnvironment::GetGravity( Vector *pGravityVector ) const
 	ConvertPositionToHL( *gravity, *pGravityVector );
 }
 
+
+IVP_Controller *CPhysicsEnvironment::GetGravityController( bool bAlternate )
+{
+	return bAlternate ? static_cast<IVP_Controller *>( m_pAlternateGravityController ) : m_pPhysEnv->get_gravity_controller();
+}
+
+const IVP_Controller *CPhysicsEnvironment::GetGravityController( bool bAlternate ) const
+{
+	return bAlternate ? static_cast<const IVP_Controller *>( m_pAlternateGravityController ) : m_pPhysEnv->get_gravity_controller();
+}
+
+bool CPhysicsEnvironment::IsGravityController( const IVP_Controller *pController ) const
+{
+	return pController &&
+		( pController == GetGravityController( false ) || pController == GetGravityController( true ) );
+}
+
+
+void CPhysicsEnvironment::SetAlternateGravity( const Vector &gravityVector )
+{
+	m_alternateGravity = gravityVector;
+	IVP_U_Point gravity;
+	ConvertPositionToIVP( gravityVector, gravity );
+	m_pAlternateGravityController->set_standard_gravity( &gravity );
+}
+
+void CPhysicsEnvironment::GetAlternateGravity( Vector *pGravityVector ) const
+{
+	if ( pGravityVector )
+	{
+		*pGravityVector = m_alternateGravity;
+	}
+}
+
+// How much wall-clock time `maxTicks` simulation ticks cover; callers use it to
+// clamp a frame's simulation time.
+float CPhysicsEnvironment::GetDeltaFrameTime( int maxTicks ) const
+{
+	return maxTicks * GetSimulationTimestep();
+}
+
+void CPhysicsEnvironment::ForceObjectsToSleep( IPhysicsObject **pList, int listCount )
+{
+	for ( int i = 0; i < listCount; i++ )
+	{
+		if ( pList[i] )
+		{
+			pList[i]->Sleep();
+		}
+	}
+}
+
+void CPhysicsEnvironment::SetPredicted( bool bPredicted )
+{
+	// This backend has no per-command object snapshots.  Claiming prediction is
+	// active would make the client skip simulations and call a no-op restore,
+	// leaving stale physics state behind.  Fail closed until rollback support is
+	// implemented.
+	if ( bPredicted )
+	{
+		Warning( "Predicted vphysics was requested, but this backend has no rollback support; prediction remains disabled.\n" );
+	}
+	m_bPredicted = false;
+	m_predictionCommandNum = 0;
+}
+
+bool CPhysicsEnvironment::IsPredicted( void )
+{
+	return m_bPredicted;
+}
+
+void CPhysicsEnvironment::SetPredictionCommandNum( int iCommandNum )
+{
+	m_predictionCommandNum = m_bPredicted ? iCommandNum : 0;
+}
+
+int CPhysicsEnvironment::GetPredictionCommandNum( void )
+{
+	return m_predictionCommandNum;
+}
+
+void CPhysicsEnvironment::DoneReferencingPreviousCommands( int iCommandNum )
+{
+	// No saved per-command state to release.
+	NOTE_UNUSED( iCommandNum );
+}
+
+void CPhysicsEnvironment::RestorePredictedSimulation( void )
+{
+	// No saved simulation snapshot to restore.
+}
+
+// Defer destroying a collide until the dead objects that reference it have
+// actually been deleted (see ClearDeadObjects).
+void CPhysicsEnvironment::DestroyCollideOnDeadObjectFlush( CPhysCollide *pCollide )
+{
+	if ( pCollide && m_deadCollides.Find( pCollide ) == -1 )
+	{
+		m_deadCollides.AddToTail( pCollide );
+	}
+}
 
 IPhysicsObject *CPhysicsEnvironment::CreatePolyObject( const CPhysCollide *pCollisionModel, int materialIndex, const Vector& position, const QAngle& angles, objectparams_t *pParams )
 {
@@ -1710,6 +1828,15 @@ void CPhysicsEnvironment::ClearDeadObjects( void )
 	}
 	m_deadObjects.Purge();
 	m_pDeleteQueue->DeleteAll();
+
+	// Collides queued by DestroyCollideOnDeadObjectFlush() are only safe to
+	// free now that every object referencing them is gone.
+	extern IPhysicsCollision *physcollision;
+	for ( int i = 0; i < m_deadCollides.Count(); i++ )
+	{
+		physcollision->DestroyCollide( m_deadCollides.Element(i) );
+	}
+	m_deadCollides.Purge();
 }
 
 void CPhysicsEnvironment::AddPlayerController( IPhysicsPlayerController *pController )

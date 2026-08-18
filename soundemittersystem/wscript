@@ -35,7 +35,7 @@ def build(bld):
 
 	defines = []
 
-	libs = ['tier0','interfaces','tier1','vstdlib']
+	libs = ['tier0','interfaces','tier1','tier2','vstdlib']
 
 	install_path = bld.env.LIBDIR
 

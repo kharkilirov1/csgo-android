@@ -10,7 +10,7 @@
 #pragma once
 
 #include "platform.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
 
 class KeyValues;

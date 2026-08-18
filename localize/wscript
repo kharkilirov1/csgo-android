@@ -12,6 +12,7 @@ def configure(conf):
 def build(bld):
 	source = [
 		'localize.cpp',
+		'../public/UnicodeFileHelpers.cpp',
 		'../public/tier0/memoverride.cpp'
 	]
 

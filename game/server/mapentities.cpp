@@ -252,7 +252,8 @@ void RememberInitialEntityPositions( int nEntities, HierarchicalSpawn_t *pSpawnL
 
 
 void SpawnAllEntities( int nEntities, HierarchicalSpawn_t *pSpawnList, bool bActivateEntities )
-{
+{	{ static int s_nEnt = 0; if ( ( s_nEnt++ % 200 ) == 0 ) printf( "ENT: spawned #%d of %d\n", s_nEnt, nEntities ); }
+
 	int nEntity;
 	for (nEntity = 0; nEntity < nEntities; nEntity++)
 	{

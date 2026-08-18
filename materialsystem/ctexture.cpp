@@ -2491,7 +2491,15 @@ int CTexture::ComputeActualSize( bool bIgnorePicmip, IVTFTexture *pVTFTexture )
 		}
 	}
 
-	// honor dimension limit after picmip downgrade/upgrade
+	{ static int s_nP = 0; if ( s_nP < 40 && !( m_nFlags & TEXTUREFLAGS_NOLOD ) ) { s_nP++; printf( "PMP: lod tex %dx%d -> clamp %dx%d skip=%d flags=0x%x\n", m_nActualWidth, m_nActualHeight, nClampX, nClampY, g_config.skipMipLevels, (unsigned)m_nFlags ); } }
+#ifdef __ANDROID__
+	// VRAM guard for low-memory phones: cap every loaded texture at
+	// 256x256. Full-resolution VTF sets push Graphics memory to ~2.4GB
+	// and the system lowmemorykiller murders the process within minutes.
+	if ( nClampX > 256 ) nClampX = 256;
+	if ( nClampY > 256 ) nClampY = 256;
+#endif
+		// honor dimension limit after picmip downgrade/upgrade
 	if ( nDimensionLimit > 0 )
 	{
 		while ( nClampX > nDimensionLimit ||

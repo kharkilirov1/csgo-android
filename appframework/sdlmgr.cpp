@@ -8,7 +8,7 @@
 #include "SDL_opengl.h"
 
 #include "appframework/ilaunchermgr.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "filesystem.h"
 
 #include "togl/rendermechanism.h"
@@ -118,7 +118,11 @@ void	CheckGLError( int line )
 //-----------------------------------------------------------------------------
 #if !defined( DEDICATED )
 
+#if defined( TOGLES )
+void *VoidFnPtrLookup_GlMgr( const char *fn, bool &okay, const bool bRequired, void *fallback)
+#else
 void *VoidFnPtrLookup_GlMgr( const char *libname, const char *fn, bool &okay, const bool bRequired, void *fallback)
+#endif
 {
 	void *retval = NULL;
 	if ((!okay) && (!bRequired))  // always look up if required (so we get a complete list of crucial missing symbols).
@@ -322,6 +326,11 @@ private:
 	uint32_t m_keyModifiers;
 	uint32_t m_mouseButtons;
 
+#if defined( __ANDROID__ )
+	bool m_bTouchMouseActive;
+	SDL_FingerID m_TouchMouseFingerId;
+#endif
+
 	bool m_bGotMouseButtonDown;
 	Uint32 m_MouseButtonDownTimeStamp;
 	int m_MouseButtonDownX;
@@ -502,6 +511,11 @@ InitReturnVal_t CSDLMgr::Init()
 	m_keyModifierMask = 0;
 	m_mouseButtons = 0;
 
+#if defined( __ANDROID__ )
+	m_bTouchMouseActive = false;
+	m_TouchMouseFingerId = 0;
+#endif
+
 	m_Window = NULL;
 	m_bFullScreen = false;
 	m_nMouseXDelta = 0;
@@ -561,6 +575,17 @@ InitReturnVal_t CSDLMgr::Init()
 
 	SET_GL_ATTR(SDL_GL_ACCELERATED_VISUAL, 1);
 
+#if defined( TOGLES )
+	// SDL defaults to an OpenGL ES 2.0 context on Android, while ToGLES
+	// requires the entry points provided by OpenGL ES 3.2. Request the
+	// required context explicitly before SDL creates the hidden bootstrap
+	// window; otherwise capable devices still start with ES 2.0 and the
+	// renderer exits during its minimum-version check.
+	SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	SET_GL_ATTR(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SET_GL_ATTR(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#endif
+
 //	Disabled due to reports of failures on some Intel GPU's on Linux.
 //	SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 #undef SET_GL_ATTR
@@ -613,7 +638,13 @@ void CSDLMgr::Shutdown()
 #endif
 
 	if (gGL && m_readFBO)
+	{
+#if defined( TOGLES )
+		gGL->glDeleteFramebuffers(1, &m_readFBO);
+#else
 		gGL->glDeleteFramebuffersEXT(1, &m_readFBO);
+#endif
+	}
 	m_readFBO = 0;
 
 	DestroyGameWindow();
@@ -761,14 +792,19 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 	// !!! FIXME: note for later...we never delete this context anywhere, I think.
 	// !!! FIXME:  when we do get around to that, don't forget to delete/NULL gGL!
 
+#if defined( TOGLES )
+    static CDynamicFunctionOpenGL< true, const GLubyte *( APIENTRY *)(GLenum name), const GLubyte * > glGetString( "glGetString");
+#else
     static CDynamicFunctionOpenGL< true, const GLubyte *( APIENTRY *)(GLenum name), const GLubyte * > glGetString( NULL, "glGetString");
     static CDynamicFunctionOpenGL< true, GLvoid ( APIENTRY *)(GLenum pname, GLint *params), GLvoid > glGetIntegerv( NULL, "glGetIntegerv");
+#endif
 
 	const char *pszString = ( const char * )glGetString(GL_VENDOR);
 	pszString = ( const char * )glGetString(GL_RENDERER);
 	pszString = ( const char * )glGetString(GL_VERSION);
 	pszString = ( const char * )glGetString(GL_EXTENSIONS);
 
+#if !defined( TOGLES )
 	GLint whichProfile = 0;
 	glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &whichProfile);
 
@@ -783,6 +819,7 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 	{
 		Assert( V_strstr(pszString, "GL_ARB_debug_output") );
 	}
+#endif
 
 	gGL = GetOpenGLEntryPoints(VoidFnPtrLookup_GlMgr);
 
@@ -805,7 +842,11 @@ bool CSDLMgr::CreateHiddenGameWindow( const char *pTitle, bool bWindowed, int wi
 		DebugPrintf("\n");
 	}
 
+#if defined( TOGLES )
+	gGL->glGenFramebuffers(1, &m_readFBO);
+#else
 	gGL->glGenFramebuffersEXT(1, &m_readFBO);
+#endif
 
 	gGL->glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
 	gGL->glScissor(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
@@ -1090,6 +1131,8 @@ void CSDLMgr::OnFrameRendered()
 #if defined( DX_TO_GL_ABSTRACTION )
 void CSDLMgr::ShowPixels( CShowPixelsParams *params )
 {
+	static int s_nSwap = 0;
+	if ( ( s_nSwap++ % 300 ) == 0 ) printf( "SWP: ShowPixels #%d\n", s_nSwap - 1 );
 	SDLAPP_FUNC;
 
 	if (params->m_onlySyncView)
@@ -1558,6 +1601,90 @@ void CSDLMgr::PumpWindowsMessageLoop()
 
 		switch ( event.type )
 		{
+#if defined( __ANDROID__ )
+			case SDL_FINGERDOWN:
+			case SDL_FINGERUP:
+			case SDL_FINGERMOTION:
+			{
+				const bool bFingerDown = event.type == SDL_FINGERDOWN;
+				const bool bFingerUp = event.type == SDL_FINGERUP;
+				const bool bActiveFinger = m_bTouchMouseActive &&
+					event.tfinger.fingerId == m_TouchMouseFingerId;
+
+				// Finger events continue through TouchSDLWatcher for the in-game
+				// controls.  Only the first finger becomes a mouse while VGUI has
+				// made its cursor visible, preventing synthetic fire/look input in
+				// gameplay.
+				if ( !m_Window )
+				{
+					if ( bFingerUp && bActiveFinger )
+					{
+						m_bTouchMouseActive = false;
+						m_mouseButtons &= ~COCOABUTTON_LEFT;
+					}
+					break;
+				}
+
+				if ( bFingerDown )
+				{
+					if ( !m_bCursorVisible || !m_bHasFocus || m_bTouchMouseActive )
+						break;
+					m_bTouchMouseActive = true;
+					m_TouchMouseFingerId = event.tfinger.fingerId;
+				}
+				else if ( !bActiveFinger )
+				{
+					break;
+				}
+				else if ( !bFingerUp && ( !m_bCursorVisible || !m_bHasFocus ) )
+				{
+					break;
+				}
+
+				int windowWidth = 0;
+				int windowHeight = 0;
+				SDL_GetWindowSize( m_Window, &windowWidth, &windowHeight );
+				const int mouseX = clamp( (int)( event.tfinger.x * windowWidth ),
+					0, MAX( 0, windowWidth - 1 ) );
+				const int mouseY = clamp( (int)( event.tfinger.y * windowHeight ),
+					0, MAX( 0, windowHeight - 1 ) );
+
+				// Mouse-button Cocoa events do not update the cursor position in
+				// inputsystem.  Always locate a visible tap before pressing it.
+				if ( m_bCursorVisible && m_bHasFocus )
+				{
+					CCocoaEvent mouseMoveEvent;
+					mouseMoveEvent.m_EventType = CocoaEvent_MouseMove;
+					mouseMoveEvent.m_MousePos[0] = mouseX * m_flMouseXScale;
+					mouseMoveEvent.m_MousePos[1] = mouseY * m_flMouseYScale;
+					mouseMoveEvent.m_MouseButtonFlags = m_mouseButtons;
+					PostEvent( mouseMoveEvent );
+				}
+
+				if ( event.type != SDL_FINGERMOTION )
+				{
+					if ( bFingerDown )
+						m_mouseButtons |= COCOABUTTON_LEFT;
+					else
+						m_mouseButtons &= ~COCOABUTTON_LEFT;
+
+					CCocoaEvent mouseButtonEvent;
+					mouseButtonEvent.m_EventType = bFingerDown
+						? CocoaEvent_MouseButtonDown : CocoaEvent_MouseButtonUp;
+					mouseButtonEvent.m_MousePos[0] = mouseX * m_flMouseXScale;
+					mouseButtonEvent.m_MousePos[1] = mouseY * m_flMouseYScale;
+					mouseButtonEvent.m_MouseButtonFlags = m_mouseButtons;
+					mouseButtonEvent.m_nMouseClickCount = 1;
+					mouseButtonEvent.m_MouseButton = COCOABUTTON_LEFT;
+					PostEvent( mouseButtonEvent );
+				}
+
+				if ( bFingerUp )
+					m_bTouchMouseActive = false;
+				break;
+			}
+#endif
+
 			case SDL_MOUSEMOTION:
 			{
                 if( m_bHasFocus == false )
@@ -1721,6 +1848,20 @@ void CSDLMgr::PumpWindowsMessageLoop()
 					case SDL_WINDOWEVENT_FOCUS_LOST:
 					{
 						m_bHasFocus = false;
+
+#if defined( __ANDROID__ )
+						if ( m_bTouchMouseActive )
+						{
+							m_mouseButtons &= ~COCOABUTTON_LEFT;
+							CCocoaEvent mouseButtonUpEvent;
+							mouseButtonUpEvent.m_EventType = CocoaEvent_MouseButtonUp;
+							mouseButtonUpEvent.m_MouseButtonFlags = m_mouseButtons;
+							mouseButtonUpEvent.m_nMouseClickCount = 1;
+							mouseButtonUpEvent.m_MouseButton = COCOABUTTON_LEFT;
+							PostEvent( mouseButtonUpEvent );
+						}
+						m_bTouchMouseActive = false;
+#endif
 
 						SDL_SetWindowGrab( m_Window, SDL_FALSE );
 						SDL_SetRelativeMouseMode( SDL_FALSE );
@@ -2134,4 +2275,3 @@ GLMDisplayDB *CSDLMgr::GetDisplayDB( void )
 
 // Turn off memdbg macros (turned on up top) since this is included like a header
 #include "tier0/memdbgoff.h"
-

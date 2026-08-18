@@ -16,7 +16,7 @@ class gameserveritem_t;
 #include "steam2common.h"
 #include "FindSteam2Servers.h"
 #else
-#include "SteamCommon.h"
+#include "steamcommon.h"
 #include "FindSteamServers.h"
 #endif
 #include "netadr.h"

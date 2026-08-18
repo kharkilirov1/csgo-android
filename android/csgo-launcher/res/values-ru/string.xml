@@ -3,6 +3,7 @@
     <string name="srceng_launcher_about">О порте</string>
     <string name="srceng_launcher_about_text">\nОсобая благодарность:\nnillerusr,Jusic за порт \nvalve за source engine\n\nНе для коммерческого использования!\nКонтакты: unknownandlost11@gmail.com\n\nДонат: https://new.donatepay.ru/@nillerusr\nBTC(Bitcoin): bc1qnjq92jj9uqjtafcx2zvnwd48q89hgtd6w8a6na\nXMR(Monero): 48iXvX61MU24m5VGc77rXQYKmoww3dZh6hn7mEwDaLVTfGhyBKq2teoPpeBq6xvqj4itsGh6EzNTzBty6ZDDevApCFNpsJg</string> <!--- Not available -->
     <string name="srceng_launcher_launch">Запустить</string>
+    <string name="srceng_launcher_preparing">Подготовка…</string>
     <string name="srceng_launcher_ok">OK</string>
     <string name="srceng_launcher_set">Выбрать</string>
     <string name="srceng_launcher_error">Ошибка</string>
@@ -11,6 +12,13 @@
     <string name="srceng_launcher_error_test_write">Тест записи провален,файлы будут храниться в </string>
     <string name="srceng_launcher_error_no_permission">Без разрешений игра не будет работать</string>
     <string name="srceng_launcher_error_find_gameinfo">Не удалось обнаружить игровые ресурсы. Провертье указанный путь к игре!</string>
+    <string name="srceng_launcher_error_missing_weapon_content">Файлы CS:GO неполные. Приложение не содержит игровые данные CS:GO. Выберите папку законно приобретённой CS:GO 1.36.0.2 с scripts/weapon_manifest.txt и всеми указанными в нём открытыми .txt-скриптами оружия, включая scripts/weapon_healthshot.txt.</string>
+    <string name="srceng_launcher_error_unsupported_content_overlay">Автоматические оверлеи содержимого CS:GO пока не поддерживаются. Перед запуском удалите или объедините соседние папки xlsppatch, update и активные csgo_dlc*.</string>
+    <string name="srceng_launcher_error_prepare_vpk">Не удалось подготовить встроенные ресурсы лаунчера. Освободите место во внутренней памяти или переустановите приложение и повторите попытку.</string>
+    <string name="srceng_launcher_storage_access_title">Доступ к файлам игры</string>
+    <string name="srceng_launcher_storage_access_message">На Android 11 и новее нужен доступ ко всем файлам, чтобы нативный движок мог читать и обновлять выбранную папку CS:GO. Лаунчер не отправляет игровые файлы.</string>
+    <string name="srceng_launcher_storage_access_grant">Открыть настройки</string>
+    <string name="srceng_launcher_storage_access_denied">Доступ к файлам игры не предоставлен</string>
 
     <string name="srceng_launcher_command_args">Аргументы командной строки</string>
     <string name="srceng_launcher_env">Env</string>

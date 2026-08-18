@@ -808,15 +808,21 @@ PlayerLocal::PlayerLocal( int iController ) :
 	DetectOnlineState();
 #elif !defined( NO_STEAM )
 	CSteamID steamIDPlayer;
-	if ( steamapicontext->SteamUser() )
+	ISteamUser *pSteamUser = steamapicontext ? steamapicontext->SteamUser() : NULL;
+	if ( pSteamUser )
 	{
-		m_eOnlineState = steamapicontext->SteamUser()->BLoggedOn() ? IPlayer::STATE_ONLINE : IPlayer::STATE_OFFLINE;
-		steamIDPlayer = steamapicontext->SteamUser()->GetSteamID();
-		m_xuid = steamIDPlayer.IsValid() ? steamIDPlayer.ConvertToUint64() : 0;
+		m_eOnlineState = pSteamUser->BLoggedOn() ? IPlayer::STATE_ONLINE : IPlayer::STATE_OFFLINE;
+		steamIDPlayer = pSteamUser->GetSteamID();
+		m_xuid = steamIDPlayer.IsValid() ? steamIDPlayer.ConvertToUint64() : 1ull;
+		if ( !steamIDPlayer.IsValid() )
+			m_eOnlineState = IPlayer::STATE_OFFLINE;
 	}
 	else
 	{
-		m_xuid = 0;
+		// The Android null-Steam implementation exposes no Steam user. Keep a
+		// stable local identity so offline sessions never advertise INVALID_XUID.
+		m_xuid = 1ull;
+		m_eOnlineState = IPlayer::STATE_OFFLINE;
 	}
 #else
 	m_xuid = 1ull;
@@ -843,13 +849,18 @@ PlayerLocal::PlayerLocal( int iController ) :
 	Q_strncpy( m_szName, pPlayerName, ARRAYSIZE( m_szName ) );
 #elif !defined( NO_STEAM )
 	// Get user name from Steam
-	if ( steamIDPlayer.IsValid() && steamapicontext->SteamUser() && steamapicontext->SteamFriends() )
+	if ( steamIDPlayer.IsValid() && pSteamUser && steamapicontext->SteamFriends() )
 	{
 		const char *pszName = steamapicontext->SteamFriends()->GetFriendPersonaName( steamIDPlayer );
 		if ( pszName )
 		{
 			Q_strncpy( m_szName, pszName, ARRAYSIZE( m_szName ) );
 		}			
+	}
+	else if ( !steamIDPlayer.IsValid() )
+	{
+		char const *szGuestName = g_pMatchFramework->GetMatchTitle()->GetGuestPlayerName( m_iController );
+		Q_strncpy( m_szName, ( szGuestName && *szGuestName ) ? szGuestName : "Player", ARRAYSIZE( m_szName ) );
 	}
 	m_CallbackOnPersonaStateChange.Register( this, &PlayerLocal::Steam_OnPersonaStateChange );
 	m_CallbackOnServersConnected.Register( this, &PlayerLocal::Steam_OnServersConnected );
@@ -1065,6 +1076,20 @@ void PlayerLocal::LoadTitleData()
 		{
 			DevMsg( "Requesting Steam stats... (%2.2f)\n", Plat_FloatTime() );
 		}
+	}
+	else
+	{
+		// A null-Steam build has no remote stats service. Initialize the local
+		// profile once so offline gameplay receives the normal loaded event.
+		m_eLoadedTitleData = GetAssumedSigninState();
+		IGameEvent *event = g_pMatchExtensions->GetIGameEventManager2()->CreateEvent( "reset_game_titledata" );
+		if ( event )
+		{
+			event->SetInt( "controllerId", m_iController );
+			g_pMatchExtensions->GetIGameEventManager2()->FireEventClientSide( event );
+		}
+		g_pMatchEventsSubscription->BroadcastEvent( new KeyValues( "ResetConfiguration", "iController", m_iController ) );
+		OnProfileTitleDataLoaded( 0 );
 	}
 
 #else
@@ -1399,9 +1424,9 @@ void PlayerLocal::UpdatePlayersSteamLogon()
 
 	// Update XUID on PS3:
 	CSteamID cSteamId = steamapicontext->SteamUser()->GetSteamID();
-	if ( !m_xuid && cSteamId.IsValid() )
+	if ( ( !m_xuid || m_xuid == 1ull ) && cSteamId.IsValid() )
 	{
-		m_xuid = steamapicontext->SteamUser()->GetSteamID().ConvertToUint64();
+		m_xuid = cSteamId.ConvertToUint64();
 	}
 }
 
@@ -2212,6 +2237,15 @@ void PlayerLocal::UpdatePlayerTitleData( TitleDataFieldsDescription_t const *fdK
 
 void PlayerLocal::GetLeaderboardData( KeyValues *pLeaderboardInfo )
 {
+	bool bCanQueryLeaderboard = true;
+#if !defined( _X360 )
+	#if !defined( NO_STEAM )
+	bCanQueryLeaderboard = steamapicontext && steamapicontext->SteamUserStats();
+	#else
+	bCanQueryLeaderboard = false;
+	#endif
+#endif
+
 	// Iterate over all views specified
 	for ( KeyValues *pView = pLeaderboardInfo->GetFirstTrueSubKey(); pView; pView = pView->GetNextTrueSubKey() )
 	{
@@ -2220,7 +2254,7 @@ void PlayerLocal::GetLeaderboardData( KeyValues *pLeaderboardInfo )
 		KeyValues *pCurrentData = m_pLeaderboardData->FindKey( szViewName );
 
 		// If no such data yet or refresh was requested, then queue this request
-		if ( pView->GetInt( ":refresh" ) || !pCurrentData )
+		if ( bCanQueryLeaderboard && ( pView->GetInt( ":refresh" ) || !pCurrentData ) )
 		{
 			if ( g_pLeaderboardRequestQueue )
 				g_pLeaderboardRequestQueue->Request( pView );
@@ -2271,7 +2305,8 @@ void PlayerLocal::UpdateLeaderboardData( KeyValues *pLeaderboardInfo )
 			if ( pDescription )
 			{
 #if !defined( _X360 ) && !defined( NO_STEAM )
-				Steam_WriteLeaderboardData( pDescription, pView );
+				if ( steamapicontext && steamapicontext->SteamUserStats() )
+					Steam_WriteLeaderboardData( pDescription, pView );
 #endif
 			}
 			continue;
@@ -2579,7 +2614,8 @@ void PlayerLocal::UpdateAwardsData( KeyValues *pAwardsData )
 							"OnProfileUnavailable", "iController", m_iController ) );
 					}
 #elif !defined( NO_STEAM )
-					bool bSteamResult = steamapicontext->SteamUserStats()->SetAchievement( pAchievement->m_szAchievementName );
+					ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+					bool bSteamResult = pSteamUserStats && pSteamUserStats->SetAchievement( pAchievement->m_szAchievementName );
 					if ( bSteamResult )
 					{
 						m_bSaveTitleData[0] = true; // signal that stats must be stored
@@ -2988,5 +3024,3 @@ CON_COMMAND_F( ms_player_unaward, "UnAwards the current player an award", FCVAR_
 	}
 }
 #endif
-
-

@@ -1,0 +1,176 @@
+name: Build signed ARM64 release candidate
+
+# Manual, fail-closed release-candidate build. This workflow deliberately does
+# not create a Git tag, GitHub Release, or other external publication.
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Release version name (for example 0.1.0-rc.1)
+        required: true
+        type: string
+      version_code:
+        description: Positive Android version code
+        required: true
+        type: string
+      confirm_release_candidate:
+        description: Build a signed release candidate artifact
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build-release-candidate:
+    if: ${{ inputs.confirm_release_candidate }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate release metadata and secret availability
+        env:
+          CSGO_VERSION_CODE: ${{ inputs.version_code }}
+          CSGO_VERSION_NAME: ${{ inputs.version_name }}
+          CSGO_RELEASE_KEYSTORE_B64: ${{ secrets.CSGO_RELEASE_KEYSTORE_B64 }}
+          CSGO_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CSGO_RELEASE_KEYSTORE_PASSWORD }}
+          CSGO_RELEASE_KEY_ALIAS: ${{ secrets.CSGO_RELEASE_KEY_ALIAS }}
+          CSGO_RELEASE_KEY_PASSWORD: ${{ secrets.CSGO_RELEASE_KEY_PASSWORD }}
+          CSGO_RELEASE_CERT_SHA256: ${{ secrets.CSGO_RELEASE_CERT_SHA256 }}
+        run: |
+          set -eu
+          case "$CSGO_VERSION_CODE" in
+            *[!0-9]*|0) echo "error: version_code must be a positive integer" >&2; exit 1 ;;
+          esac
+          test "$CSGO_VERSION_CODE" -le 2100000000 || { echo "error: version_code is too large" >&2; exit 1; }
+          printf '%s\n' "$CSGO_VERSION_NAME" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z._+-]{0,99}$' || { echo "error: invalid version_name" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEYSTORE_B64" || { echo "error: CSGO_RELEASE_KEYSTORE_B64 is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEYSTORE_PASSWORD" || { echo "error: CSGO_RELEASE_KEYSTORE_PASSWORD is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEY_ALIAS" || { echo "error: CSGO_RELEASE_KEY_ALIAS is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEY_PASSWORD" || { echo "error: CSGO_RELEASE_KEY_PASSWORD is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_CERT_SHA256" || { echo "error: CSGO_RELEASE_CERT_SHA256 is unavailable" >&2; exit 1; }
+
+      - name: Run source regression tests
+        run: |
+          python3 android/csgo-launcher/tests/check_launcher_integration.py
+          python3 unittests/core_runtime_source_checks.py
+          python3 scripts/test_datacache_waf_parity.py
+          python3 scripts/test_sanitize_android_release_vpk.py
+          python3 scripts/test_android_release_pipeline.py
+          python3 scripts/test_android_shader_release.py
+          python3 scripts/test_android_game_content_preflight.py
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libsdl2-dev libfreetype6-dev libopenal-dev libcurl4-openssl-dev \
+            libedit-dev libjpeg-dev libpng-dev libbz2-dev unzip
+
+      - name: Fetch and verify NDK r20b
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip -O ndk.zip
+          . scripts/android-aarch64-common.sh
+          printf '%s  %s\n' "$ANDROID_NDK_R20B_SHA256" ndk.zip | sha256sum -c -
+          unzip -q ndk.zip
+          rm ndk.zip
+
+      - name: Build engine for arm64
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+        run: scripts/build-android-aarch64.sh
+
+      - name: Install Android command-line tools and SDK 35
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          wget -q \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+            -O "$RUNNER_TEMP/android-commandlinetools.zip"
+          printf '%s  %s\n' \
+            2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258 \
+            "$RUNNER_TEMP/android-commandlinetools.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/android-commandlinetools.zip" \
+            -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" \
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          set +e
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          license_status=${PIPESTATUS[1]}
+          set -e
+          test "$license_status" -eq 0 || { echo "error: Android SDK license acceptance failed" >&2; exit 1; }
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare ephemeral release keystore
+        env:
+          CSGO_RELEASE_KEYSTORE_B64: ${{ secrets.CSGO_RELEASE_KEYSTORE_B64 }}
+          CSGO_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CSGO_RELEASE_KEYSTORE_PASSWORD }}
+          CSGO_RELEASE_KEY_ALIAS: ${{ secrets.CSGO_RELEASE_KEY_ALIAS }}
+          CSGO_RELEASE_KEY_PASSWORD: ${{ secrets.CSGO_RELEASE_KEY_PASSWORD }}
+          CSGO_RELEASE_CERT_SHA256: ${{ secrets.CSGO_RELEASE_CERT_SHA256 }}
+        run: |
+          set -eu
+          umask 077
+          test -n "$CSGO_RELEASE_KEYSTORE_B64" || { echo "error: CSGO_RELEASE_KEYSTORE_B64 is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEYSTORE_PASSWORD" || { echo "error: CSGO_RELEASE_KEYSTORE_PASSWORD is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEY_ALIAS" || { echo "error: CSGO_RELEASE_KEY_ALIAS is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_KEY_PASSWORD" || { echo "error: CSGO_RELEASE_KEY_PASSWORD is unavailable" >&2; exit 1; }
+          test -n "$CSGO_RELEASE_CERT_SHA256" || { echo "error: CSGO_RELEASE_CERT_SHA256 is unavailable" >&2; exit 1; }
+          printf '%s' "$CSGO_RELEASE_KEYSTORE_B64" | base64 --decode \
+            > "$RUNNER_TEMP/csgo-release.keystore"
+          test -s "$RUNNER_TEMP/csgo-release.keystore"
+          chmod 600 "$RUNNER_TEMP/csgo-release.keystore"
+          echo "CSGO_RELEASE_KEYSTORE=$RUNNER_TEMP/csgo-release.keystore" >> "$GITHUB_ENV"
+
+      - name: Package and verify signed release APK
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          NDK_HOME: ${{ github.workspace }}/android-ndk-r20b
+          CSGO_BUILD_VARIANT: release
+          CSGO_VERSION_CODE: ${{ inputs.version_code }}
+          CSGO_VERSION_NAME: ${{ inputs.version_name }}
+          CSGO_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CSGO_RELEASE_KEYSTORE_PASSWORD }}
+          CSGO_RELEASE_KEY_ALIAS: ${{ secrets.CSGO_RELEASE_KEY_ALIAS }}
+          CSGO_RELEASE_KEY_PASSWORD: ${{ secrets.CSGO_RELEASE_KEY_PASSWORD }}
+          CSGO_RELEASE_CERT_SHA256: ${{ secrets.CSGO_RELEASE_CERT_SHA256 }}
+        run: scripts/build-apk-aarch64.sh
+
+      - name: Remove release keystore before artifact handling
+        if: always()
+        run: rm -f "$RUNNER_TEMP/csgo-release.keystore"
+
+      - name: Prepare immutable release-candidate artifact
+        run: |
+          cp android/csgo-launcher/app/build/outputs/apk/release/app-release.apk \
+            "$RUNNER_TEMP/csgo-android-arm64-release.apk"
+          cd "$RUNNER_TEMP"
+          sha256sum csgo-android-arm64-release.apk \
+            > csgo-android-arm64-release.apk.sha256
+
+      - name: Store signed APK as a workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: csgo-android-${{ inputs.version_name }}-arm64-release
+          path: |
+            ${{ runner.temp }}/csgo-android-arm64-release.apk
+            ${{ runner.temp }}/csgo-android-arm64-release.apk.sha256
+            ${{ github.workspace }}/LICENSE
+            ${{ github.workspace }}/thirdpartylegalnotices.txt
+          if-no-files-found: error
+          retention-days: 14

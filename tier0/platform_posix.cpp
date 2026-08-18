@@ -385,13 +385,17 @@ bool Plat_IsInDebugSession()
 void Plat_ExitProcess( int nCode )
 {
 	fflush( stdout );
+#if !defined( ANDROID )
 	if ( nCode != 0 )
 	{
 		// Right now we want a non-zero exit code to cause a hard crash so
 		// that we trigger minidump.
+		// On Android there is no minidump writer - the deliberate null write
+		// only produced a confusing SIGSEGV report on every fatal exit.
 		int* x = NULL;
 		*x = 1;
 	}
+#endif
 	_exit( nCode );
 }
 

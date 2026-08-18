@@ -16,7 +16,7 @@
 #include <vgui/ILocalize.h>
 #include <vgui/ISurface.h>
 #include <filesystem.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <convar.h>
 #include <vgui_controls/ImageList.h>
 
@@ -235,15 +235,20 @@ void CTextWindow::ShowURL( const char *URL, bool bAllowUserToDisable )
 	CFmtStr fmtPattern;
 	CFmtStr fmtReplacement;
 
-	fmtPattern.Clear();			fmtPattern.AppendFormat( "%s", "%steamid%" );
-	fmtReplacement.Clear();		fmtReplacement.AppendFormat( "%llu", steamapicontext->SteamUser()->GetSteamID().ConvertToUint64() );
-	while ( char *pszReplace = strstr( chUrlBufferAfterPatternReplacements, fmtPattern.Access() ) )
+	// The offline stub steam_api exposes no SteamUser(); substituting
+	// %steamid% would dereference NULL. Skip the replacement instead.
+	if ( steamapicontext && steamapicontext->SteamUser() )
 	{
-		size_t numBytes = Q_strlen( pszReplace + fmtPattern.Length() );
-		if ( pszReplace + fmtReplacement.Length() + numBytes + 1 >= &chUrlBufferAfterPatternReplacements[ sizeof( chUrlBufferAfterPatternReplacements ) ] )
-			break;
-		Q_memmove( pszReplace + fmtReplacement.Length(), pszReplace + fmtPattern.Length(), numBytes );
-		Q_memcpy( pszReplace, fmtReplacement.Access(), fmtReplacement.Length() );
+		fmtPattern.Clear();			fmtPattern.AppendFormat( "%s", "%steamid%" );
+		fmtReplacement.Clear();		fmtReplacement.AppendFormat( "%llu", steamapicontext->SteamUser()->GetSteamID().ConvertToUint64() );
+		while ( char *pszReplace = strstr( chUrlBufferAfterPatternReplacements, fmtPattern.Access() ) )
+		{
+			size_t numBytes = Q_strlen( pszReplace + fmtPattern.Length() );
+			if ( pszReplace + fmtReplacement.Length() + numBytes + 1 >= &chUrlBufferAfterPatternReplacements[ sizeof( chUrlBufferAfterPatternReplacements ) ] )
+				break;
+			Q_memmove( pszReplace + fmtReplacement.Length(), pszReplace + fmtPattern.Length(), numBytes );
+			Q_memcpy( pszReplace, fmtReplacement.Access(), fmtReplacement.Length() );
+		}
 	}
 
 	fmtPattern.Clear();			fmtPattern.AppendFormat( "%s", "%map%" );
@@ -598,8 +603,10 @@ void CTextWindow::SetData(KeyValues *data)
 void CTextWindow::SetData( int type, const char *title, const char *message, const char *message_fallback, int command )
 {
 	Q_strncpy(  m_szTitle, "", sizeof( m_szTitle ) );
-	Q_strncpy(  m_szMessage, message, sizeof( m_szMessage ) );
-	Q_strncpy(  m_szMessageFallback, message_fallback, sizeof( m_szMessageFallback ) );
+	// Offline listen servers can show the MOTD panel without any
+	// message payload; Q_strncpy(source=NULL) faults on ARM.
+	Q_strncpy(  m_szMessage, message ? message : "", sizeof( m_szMessage ) );
+	Q_strncpy(  m_szMessageFallback, message_fallback ? message_fallback : "", sizeof( m_szMessageFallback ) );
 	
 	m_nExitCommand = command;
 

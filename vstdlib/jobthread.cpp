@@ -1237,13 +1237,20 @@ bool CThreadPool::Stop( int timeout )
 	{
 		if ( arrHandles[i] )
 		{
+#ifdef WIN32
 			ThreadJoin( arrHandles[i] );
 
-#ifdef WIN32
 			Assert( !m_Threads[i]->GetThreadHandle() );
 			// because we duplicated the handle above, due to the historical reasons described above, we have to close this handle on Win32
 			CloseHandle( arrHandles[i] );
 #else
+			// Join through the CThread, not the raw pthread_t. Joining the raw
+			// handle left m_threadZombieId set, and ~CThread below then joined
+			// the same, already-joined thread a second time - exactly the
+			// double-join the Win32 comment above calls invalid in pthreads.
+			// glibc happens to tolerate it; Bionic aborts, which killed every
+			// Android shutdown path.
+			m_Threads[i]->Join();
 			Assert( !m_Threads[i]->IsAlive() );
 #endif
 		}

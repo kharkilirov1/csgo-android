@@ -406,12 +406,24 @@ public:
 	T& Element( int i )
 	{
 		Assert( IsValidIndex( i ) );
+#ifdef ANDROID
+		if ( (unsigned)i >= (unsigned)m_pData->m_Size )
+		{
+			return m_pData->m_Elements[0];
+		}
+#endif
 		return m_pData->m_Elements[i];
 	}
 
 	const T& Element( int i ) const
 	{
 		Assert( IsValidIndex( i ) );
+#ifdef ANDROID
+		if ( (unsigned)i >= (unsigned)m_pData->m_Size )
+		{
+			return m_pData->m_Elements[0];
+		}
+#endif
 		return m_pData->m_Elements[i];
 	}
 

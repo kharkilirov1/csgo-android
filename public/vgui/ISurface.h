@@ -12,12 +12,12 @@
 #pragma once
 #endif
 
-#include "vgui/vgui.h"
+#include "vgui/VGUI.h"
 #include "vgui/IHTML.h" // CreateHTML, PaintHTML 
 #include "tier1/interface.h"
 #include "bitmap/imageformat.h"
 
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 #include "mathlib/vector2d.h"  // must be before the namespace line
 #include "vgui/ischemesurface.h"
 

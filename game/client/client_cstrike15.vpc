@@ -457,6 +457,16 @@ $Project "Client (CSGO)"
 				$File	"cstrike15\cs_hud_weaponselection.cpp"
 				$File	"cstrike15\cs_hud_weaponselection.h"
 				$File	"cstrike15\hud_flashbang.cpp"
+				// Native VGUI stand-ins for Scaleform HUD pieces. Valve left
+				// these out of the project (and commented out their
+				// DECLARE_HUDELEMENT) when the HUD moved to Scaleform; with no
+				// GFx available they are what actually draws.
+				$File	"hud_base_account.cpp"
+				$File	"cstrike15\cs_hud_account.cpp"
+				$File	"cstrike15\cs_hud_health.cpp"
+				$File	"cstrike15\cs_hud_armor.cpp"
+				$File	"cstrike15\hud_roundtimer.cpp"
+				$File	"cstrike15\cs_hud_target_id.cpp"
 				$File	"cstrike15\radio_status.cpp"
 				$File	"cstrike15\radio_status.h"
 			}

@@ -15,7 +15,7 @@
 
 #include "utlvector.h"
 #include "shadershadowdx8.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 #include "checksum_crc.h"
 #include "shaderapi/ishaderapi.h"
 

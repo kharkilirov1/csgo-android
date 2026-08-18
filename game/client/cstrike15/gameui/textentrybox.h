@@ -13,7 +13,7 @@
 #pragma once
 #endif
 
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include <vgui_controls/QueryBox.h>
 
 namespace vgui

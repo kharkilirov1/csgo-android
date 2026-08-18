@@ -1,4 +1,4 @@
-//===== Copyright © 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -14,7 +14,7 @@
 #include "mathlib/IceKey.H"
 #include "checksum_crc.h"
 #include "particle_parse.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "icommandline.h"
 
 #ifdef CLIENT_DLL
@@ -1123,7 +1123,9 @@ void UTIL_DecodeICE( unsigned char * buffer, int size, const unsigned char *key 
 
 	int blockSize = ice.blockSize();
 
-	unsigned char *temp = (unsigned char *) stackalloc( PAD_NUMBER( size, blockSize ) );
+	// heap: size comes straight from a content file, too big to trust on the
+	// ~1MB engine worker stacks
+	unsigned char *temp = (unsigned char *) malloc( PAD_NUMBER( size, blockSize ) );
 	unsigned char *p1 = buffer;
 	unsigned char *p2 = temp;
 				
@@ -1139,6 +1141,7 @@ void UTIL_DecodeICE( unsigned char * buffer, int size, const unsigned char *key 
 
 	// copy encrypted data back to original buffer
 	Q_memcpy( buffer, temp, size-bytesLeft );
+	free( temp );
 }
 
 void UTIL_EncodeICE( unsigned char * buffer, unsigned int size, const unsigned char *key )

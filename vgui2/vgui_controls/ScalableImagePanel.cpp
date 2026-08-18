@@ -11,7 +11,7 @@
 #include <vgui/ISurface.h>
 #include <vgui/IScheme.h>
 #include <vgui/IBorder.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 
 #include <vgui_controls/ScalableImagePanel.h>
 

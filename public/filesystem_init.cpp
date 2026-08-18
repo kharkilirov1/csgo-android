@@ -25,7 +25,7 @@
 #include "filesystem_init.h"
 #include "tier0/icommandline.h"
 #include "tier0/stacktools.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "appframework/IAppSystemGroup.h"
 #include "tier1/smartptr.h"
 #if defined( _X360 )
@@ -447,6 +447,21 @@ static bool FileSystem_GetBaseDir( char *baseDir, int baseDirLen )
 		
 	return baseDir[0] != 0;
 #else
+#if defined( __ANDROID__ )
+	// Android packages the engine modules in nativeLibraryDir while game
+	// content lives in a user-selected external directory. Deriving the base
+	// from argv[0] therefore points at app-private storage, not the content
+	// root. LauncherActivity passes the real root through this environment
+	// variable before any filesystem setup occurs.
+	const char *pAndroidGameRoot = getenv( "VALVE_GAME_PATH" );
+	if ( pAndroidGameRoot && pAndroidGameRoot[0] )
+	{
+		V_strncpy( baseDir, pAndroidGameRoot, baseDirLen );
+		V_FixSlashes( baseDir );
+		V_StripTrailingSlash( baseDir );
+		return baseDir[0] != 0;
+	}
+#endif
 	if ( FileSystem_GetExecutableDir( baseDir, baseDirLen ) )
 	{
 		Q_StripFilename( baseDir );
@@ -1027,6 +1042,20 @@ FSReturnCode_t LocateGameInfoFile( const CFSSteamSetupInfo &fsInfo, char *pOutDi
 	{
 		if ( !fsInfo.m_pDirectoryName )
 			return SetupFileSystemError( false, FS_MISSING_GAMEINFO_FILE, "bOnlyUseDirectoryName=1 and pDirectoryName=NULL." );
+
+#if defined( __ANDROID__ )
+		const char *pAndroidGameRoot = getenv( "VALVE_GAME_PATH" );
+		if ( pAndroidGameRoot && pAndroidGameRoot[0] && !Q_IsAbsolutePath( fsInfo.m_pDirectoryName ) )
+		{
+			char gameInfoDir[MAX_PATH];
+			V_ComposeFileName( pAndroidGameRoot, fsInfo.m_pDirectoryName, gameInfoDir, sizeof( gameInfoDir ) );
+			if ( DoesFileExistIn( gameInfoDir, GAMEINFO_FILENAME ) )
+			{
+				V_strncpy( pOutDir, gameInfoDir, outDirLen );
+				return FS_OK;
+			}
+		}
+#endif
 
 		bool bExists = DoesFileExistIn( fsInfo.m_pDirectoryName, GAMEINFO_FILENAME );
 		if ( IsX360() && !bExists )

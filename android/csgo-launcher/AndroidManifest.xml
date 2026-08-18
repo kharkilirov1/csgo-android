@@ -4,14 +4,21 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <!-- Legacy direct-path access for Android 9/10. Android 11+ uses the
+         special all-files access below because the native Source filesystem
+         requires real POSIX paths and cannot consume Storage Access Framework
+         content:// URIs. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-feature android:name="android.hardware.screen.landscape" android:required="true"/>
     <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+    <uses-feature android:name="android.hardware.wifi" android:required="false"/>
     <uses-feature android:name="android.software.leanback" android:required="false" />
-    <uses-feature android:glEsVersion="0x00020000"/>
+    <uses-feature android:glEsVersion="0x00030002" android:required="true"/>
     <application android:icon="@drawable/ic_launcher" android:label="@string/srceng_app_name" android:allowAudioPlaybackCapture="true" android:requestLegacyExternalStorage="true">
-        <activity android:exported="true" android:label="@string/srceng_app_name" android:name="me.nillerusr.LauncherActivity" android:windowSoftInputMode="adjustResize|stateHidden">
+        <activity android:exported="true" android:hardwareAccelerated="false" android:label="@string/srceng_app_name" android:name="me.nillerusr.LauncherActivity" android:windowSoftInputMode="adjustResize|stateHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

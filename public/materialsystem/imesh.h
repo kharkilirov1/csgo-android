@@ -1268,7 +1268,7 @@ inline void CVertexBuilder::FastVertex( const ModelVertexDX8_t &vertex )
 
 			emms
 	}
-#elif defined(GNUC)
+#elif defined(GNUC) && ( defined( __i386__ ) || defined( __x86_64__ ) )
 	const void *pRead = &vertex;
 	void *pCurrPos = m_pCurrPosition;
 	__asm__ __volatile__ (
@@ -1291,7 +1291,8 @@ inline void CVertexBuilder::FastVertex( const ModelVertexDX8_t &vertex )
 						  "emms\n"
 						  :: "r" (pRead), "r" (pCurrPos) : "memory");
 #else
-	Error( "Implement CMeshBuilder::FastVertex(dx8)" );
+	// Non-x86 (e.g. arm64): no MMX/SSE streaming store, do a plain vertex copy.
+	*reinterpret_cast< ModelVertexDX8_t * >( m_pCurrPosition ) = vertex;
 #endif
 
 	IncrementFloatPointer( m_pCurrPosition, m_VertexSize_Position );
@@ -1324,7 +1325,7 @@ inline void CVertexBuilder::FastVertexSSE( const ModelVertexDX8_t &vertex )
 		movntps [edi + 16], xmm1
 		movntps [edi + 32], xmm2
 	}
-#elif defined(GNUC)
+#elif defined(GNUC) && ( defined( __i386__ ) || defined( __x86_64__ ) )
 	const void *pRead = &vertex;
 	void *pCurrPos = m_pCurrPosition;
 	__asm__ __volatile__ (
@@ -1338,7 +1339,8 @@ inline void CVertexBuilder::FastVertexSSE( const ModelVertexDX8_t &vertex )
 						  "movntps %%xmm3, 48(%1)\n"						  
 						  :: "r" (pRead), "r" (pCurrPos) : "memory");
 #else
-	Error( "Implement CMeshBuilder::FastVertexSSE((dx8)" );
+	// Non-x86 (e.g. arm64): no SSE streaming store, do a plain vertex copy.
+	*reinterpret_cast< ModelVertexDX8_t * >( m_pCurrPosition ) = vertex;
 #endif
 
 	IncrementFloatPointer( m_pCurrPosition, m_VertexSize_Position );
@@ -1355,6 +1357,9 @@ inline void CVertexBuilder::FastQuadVertexSSE( const QuadTessVertex_t &vertex )
 {
 	Assert( m_CompressionType == VERTEX_COMPRESSION_NONE ); // FIXME: support compressed verts if needed
 	Assert( m_nCurrentVertex < m_nMaxVertexCount );
+	AssertMsg( m_VertexSize_Position >= static_cast<int>( sizeof( vertex ) ), "quad tessellation vertex does not fit the destination stride" );
+	if ( m_VertexSize_Position < static_cast<int>( sizeof( vertex ) ) )
+		return;
 
 #if defined( _WIN32 ) && !defined( _X360 ) && !defined( _M_X64 )
 	const void *pRead = &vertex;
@@ -1372,6 +1377,12 @@ inline void CVertexBuilder::FastQuadVertexSSE( const QuadTessVertex_t &vertex )
 		movntps [edi + 16], xmm1
 		movntps [edi + 32], xmm2
 	}
+#else
+	// The original fast path only emitted stores for 32-bit x86.  ARM64 (and
+	// every other target) must still write the vertex before advancing the
+	// stream pointer.  memcpy also avoids imposing SSE's alignment contract on
+	// architectures that do not use the assembly path.
+	memcpy( m_pCurrPosition, &vertex, sizeof( vertex ) );
 #endif
 
 	IncrementFloatPointer( m_pCurrPosition, m_VertexSize_Position );

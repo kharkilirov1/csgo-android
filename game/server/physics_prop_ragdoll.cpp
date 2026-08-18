@@ -14,10 +14,10 @@
 #include "datacache/imdlcache.h"
 #include "bone_setup.h"
 #include "physics_prop_ragdoll.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "props.h"
 #include "RagdollBoogie.h"
-#include "ai_criteria.h"
+#include "AI_Criteria.h"
 #include "ragdoll_shared.h"
 #include "hierarchy.h"
 

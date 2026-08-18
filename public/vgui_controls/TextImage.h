@@ -12,12 +12,12 @@
 #pragma once
 #endif
 
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/ILocalize.h>
 #include <vgui_controls/Image.h>
 
 #include <utlvector.h>
-#include <utlsortvector.h>
+#include <UtlSortVector.h>
 
 class KeyValues;
 

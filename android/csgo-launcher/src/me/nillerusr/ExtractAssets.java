@@ -1,88 +1,94 @@
 package me.nillerusr;
-import android.content.SharedPreferences;
-import java.io.FileOutputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.lang.reflect.Method;
-import android.util.Log;
+
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
+import android.content.SharedPreferences;
+import android.util.Log;
 
-public class ExtractAssets
-{
-	public static String TAG = "ExtractAssets";
-	static SharedPreferences mPref;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
+public final class ExtractAssets {
 	public static final String VPK_NAME = "extras_dir.vpk";
-	public static int PAK_VERSION = 9;
+	public static final int PAK_VERSION = 9;
+	private static final byte[] VPK_SIGNATURE = {
+		(byte)0x34, (byte)0x12, (byte)0xaa, (byte)0x55
+	};
 
-    private static int chmod(String path, int mode)
-    {
-		int ret = -1;
-
-		try
-		{
-			ret = Runtime.getRuntime().exec("chmod " + Integer.toOctalString(mode) + " " + path).waitFor();
-			Log.d(TAG, "chmod " + Integer.toOctalString(mode) + " " + path + ": " + ret );
-		}
-		catch(Exception e)
-		{
-			ret = -1;
-			Log.d(TAG, "chmod: Runtime not worked: " + e.toString() );
-		}
-
-		try
-		{
-			Class fileUtils = Class.forName("android.os.FileUtils");
-			Method setPermissions = fileUtils.getMethod("setPermissions", String.class, int.class, int.class, int.class);
-			ret = (Integer) setPermissions.invoke(null, path, mode, -1, -1);
-		}
-		catch(Exception e)
-		{
-			ret = -1;
-			Log.d(TAG, "chmod: FileUtils not worked: " + e.toString() );
-		}
-
-		return ret;
+	private ExtractAssets() {
 	}
 
-	public static void extractVPK(Context context, Boolean force) 
-	{
-		ApplicationInfo appinf = context.getApplicationInfo();
+	public static boolean isValidVPK(File file) {
+		if (file == null || !file.isFile() || file.length() <= VPK_SIGNATURE.length)
+			return false;
 
-		FileOutputStream os = null;
+		byte[] signature = new byte[VPK_SIGNATURE.length];
+		try (FileInputStream input = new FileInputStream(file)) {
+			int offset = 0;
+			while (offset < signature.length) {
+				int count = input.read(signature, offset, signature.length - offset);
+				if (count < 0)
+					return false;
+				offset += count;
+			}
+		} catch (Exception error) {
+			return false;
+		}
+
+		for (int index = 0; index < signature.length; ++index) {
+			if (signature[index] != VPK_SIGNATURE[index])
+				return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Materializes the bundled VPK into app-private storage for the native
+	 * filesystem. The returned path is a normal POSIX path that AddVPKFile can
+	 * open; content:// URIs cannot be consumed by the Source filesystem.
+	 */
+	public static synchronized File extractVPK(Context context, boolean force) {
+		SharedPreferences preferences = context.getSharedPreferences("mod", 0);
+		File destination = new File(context.getFilesDir(), VPK_NAME);
+		if (!force && isValidVPK(destination) &&
+			preferences.getInt("pakversion", 0) == PAK_VERSION) {
+			return destination;
+		}
+
+		File temporary = new File(context.getFilesDir(), VPK_NAME + ".tmp");
 		try {
-			if( mPref == null )
-				mPref = context.getSharedPreferences("mod", 0);
-
-			File file = new File( context.getFilesDir().getPath() +"/"+ VPK_NAME );
-			if( !file.exists() )
-				force = true;
-
-			if( mPref.getInt( "pakversion", 0 ) == PAK_VERSION && !force )
-				return;
-
-			InputStream is = context.getAssets().open(VPK_NAME);
-			os = new FileOutputStream( context.getFilesDir().getPath() +"/"+ VPK_NAME);
-			byte[] buffer = new byte[8192];
-			while (true) {
-				int length = is.read(buffer);
-				if (length <= 0)
-					break;
-
-				os.write(buffer, 0, length);
+			try (InputStream input = context.getAssets().open(VPK_NAME);
+				 FileOutputStream output = new FileOutputStream(temporary)) {
+				byte[] buffer = new byte[64 * 1024];
+				for (int length = input.read(buffer); length >= 0; length = input.read(buffer)) {
+					if (length > 0)
+						output.write(buffer, 0, length);
+				}
+				output.getFD().sync();
 			}
 
-			SharedPreferences.Editor editor = mPref.edit();
-			editor.putInt( "pakversion", PAK_VERSION );
-			editor.commit();
+			if (!isValidVPK(temporary))
+				throw new IllegalStateException("Bundled extras VPK is invalid");
 
-			chmod(appinf.dataDir, 0777);
-			chmod(context.getFilesDir().getPath(), 0777);
-			chmod(context.getFilesDir().getPath() +"/"+ VPK_NAME, 0777);
-		}
-		catch (Exception e) {
-			Log.e("SRCAPK", "Failed to extract vpk:" + e.toString());
+			try {
+				Files.move(temporary.toPath(), destination.toPath(),
+					StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			} catch (AtomicMoveNotSupportedException unsupported) {
+				Files.move(temporary.toPath(), destination.toPath(),
+					StandardCopyOption.REPLACE_EXISTING);
+			}
+			if (!isValidVPK(destination))
+				throw new IllegalStateException("Installed extras VPK is invalid");
+			preferences.edit().putInt("pakversion", PAK_VERSION).apply();
+			return destination;
+		} catch (Exception error) {
+			Log.e("SRCAPK", "Failed to extract " + VPK_NAME, error);
+			temporary.delete();
+			return null;
 		}
 	}
 }

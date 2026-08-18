@@ -718,7 +718,7 @@ ConVar gl_minimize_all_tex ( "gl_minimize_all_tex", "1" );	// if 1, set the GL_T
 ConVar gl_minimize_tex_log ( "gl_minimize_tex_log", "0" );	// if 1, printf the names of the tex that got minimized
 
 CGLMTex::CGLMTex( GLMContext *ctx, GLMTexLayout *layout, uint levels, const char *debugLabel )
-{
+{ extern int g_nLiveTex; g_nLiveTex++; { extern long long g_nLiveTexBytes; g_nLiveTexBytes += 0LL; } { extern char g_lastTexLabel[64]; if ( debugLabel && debugLabel[0] ) { const char *s = debugLabel; int i=0; while ( s[i] && i < 48 ) { g_lastTexLabel[i] = s[i]; i++; } g_lastTexLabel[i] = 0; } else { g_lastTexLabel[0] = 63; g_lastTexLabel[1] = 0; } }
 #if GLMDEBUG
 	m_pPrevTex = NULL;
 	m_pNextTex = g_pFirstCGMLTex;
@@ -973,7 +973,7 @@ CGLMTex::CGLMTex( GLMContext *ctx, GLMTexLayout *layout, uint levels, const char
 }
 
 CGLMTex::~CGLMTex( )
-{
+{ extern int g_nLiveTex; g_nLiveTex--; { extern long long g_nLiveTexBytes; g_nLiveTexBytes -= 0LL; }
 #if GLMDEBUG
 	if ( m_pPrevTex )
 	{
@@ -3695,6 +3695,20 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 						gGL->glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 );
 						gGL->glPixelStorei( GL_UNPACK_SKIP_PIXELS, 0 );
 						gGL->glPixelStorei( GL_UNPACK_SKIP_ROWS, 0 );
+#ifdef __ANDROID__
+					if ( m_layout->m_key.m_texFlags & kGLMTexSRGB )
+					{
+						static int s_nDump = 0;
+						if ( s_nDump < 24 )
+						{
+							unsigned char *pb = (unsigned char*)sliceAddress;
+							printf( "TXW: #%d SUB %dx%d intfmt=%x data=%p [%02x %02x %02x %02x] glerr=0x%x\n",
+								s_nDump++, slice->m_xSize, slice->m_ySize, intformat, sliceAddress,
+								pb ? pb[0] : 0, pb ? pb[1] : 0, pb ? pb[2] : 0, pb ? pb[3] : 0, gGL->glGetError() );
+						}
+					}
+#endif
+
 					}
 					else
 					{
@@ -3737,6 +3751,19 @@ void CGLMTex::WriteTexels( GLMTexLockDesc *desc, bool writeWholeSlice, bool noDa
 						}
 					}
 
+#ifdef __ANDROID__
+					if ( m_layout->m_key.m_texFlags & kGLMTexSRGB )
+					{
+						static int s_nDump = 0;
+						if ( s_nDump < 24 )
+						{
+							unsigned char *pb = (unsigned char*)sliceAddress;
+							printf( "TXW: #%d IMG %dx%d intfmt=%x data=%p [%02x %02x %02x %02x] glerr=0x%x\n",
+								s_nDump++, slice->m_xSize, slice->m_ySize, intformat, sliceAddress,
+								pb ? pb[0] : 0, pb ? pb[1] : 0, pb ? pb[2] : 0, pb ? pb[3] : 0, gGL->glGetError() );
+						}
+					}
+#endif
 					m_sliceFlags[ desc->m_sliceIndex ] |= kSliceValid; // for next time, we can subimage..
 				}
 			}

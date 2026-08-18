@@ -10,7 +10,7 @@
 #include <vgui/ISurface.h>
 #include <vgui/ISystem.h>
 #include <vgui/ILocalize.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "vgui/IVGui.h"
 
 #include <vgui_controls/BuildGroup.h>

@@ -690,6 +690,12 @@ public:
 	//-------------------------------------------------------------
 	bool ConnectDebugger()
 	{
+#if defined( ANDROID ) || defined( _ANDROID ) || defined( __ANDROID__ )
+		// The legacy remote debugger has no authentication and historically
+		// listened on every interface.  Never expose it from an Android game
+		// process, even when developer mode is enabled.
+		return false;
+#else
 		if ( developer.GetInt() > 0 )
 		{
 			if ( !m_hDbg )
@@ -705,6 +711,7 @@ public:
 			return SQ_SUCCEEDED(sq_rdbg_waitforconnections(m_hDbg));
 		}
 		return false;
+#endif
 	}
 
 	//-------------------------------------------------------------

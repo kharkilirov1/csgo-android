@@ -6,7 +6,7 @@
 
 #include "cbase.h"
 #include <vgui_controls/Panel.h>
-#include <vgui/isurface.h>
+#include <vgui/ISurface.h>
 #include <vgui_controls/AnimationController.h>
 #include <vgui/ILocalize.h>
 #include "hud_base_account.h"
@@ -20,7 +20,32 @@
 using namespace vgui;
 
 CHudBaseAccount::CHudBaseAccount( const char *pName ) :
-	CHudNumericDisplay( NULL, pName ), CHudElement( pName )
+	CHudElement( pName ),
+	CHudNumericDisplay( NULL, pName ),
+	m_iPreviousAccount( -1 ),
+	m_iPreviousDelta( 0 ),
+	m_pAccountIcon( NULL ),
+	m_pMinusIcon( NULL ),
+	m_pPlusIcon( NULL ),
+	m_clrRed( 255, 16, 16, 255 ),
+	m_clrGreen( 16, 255, 16, 255 ),
+	m_clrDeltaColor( 255, 255, 255, 255 ),
+	icon_xpos( 0.0f ),
+	icon_ypos( 0.0f ),
+	icon2_xpos( 0.0f ),
+	icon2_ypos( 0.0f ),
+	digit_xpos( 50.0f ),
+	digit_ypos( 2.0f ),
+	digit2_xpos( 0.0f ),
+	digit2_ypos( 0.0f ),
+	m_Ammo2Color( 0, 0, 0, 0 ),
+	m_TextColor( 255, 255, 255, 255 ),
+	m_hNumberFont( vgui::INVALID_FONT ),
+	m_flLastAnimationEnd( 0.0f ),
+	m_pszLastAnimationName( NULL ),
+	m_pszQueuedAnimationName( NULL ),
+	icon_tall( 0.0f ),
+	icon_wide( 0.0f )
 {
 	SetHiddenBits( HIDEHUD_PLAYERDEAD );
 	SetIndent( false ); // don't indent small numbers in the drawing code - we're doing it manually
@@ -41,6 +66,8 @@ void CHudBaseAccount::LevelInit( void )
 void CHudBaseAccount::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings(pScheme);
+	icon_tall = 0.0f;
+	icon_wide = 0.0f;
 
 	m_clrRed	= pScheme->GetColor( "HudIcon_Red", Color( 255, 16, 16, 255 ) );
 	m_clrGreen	= pScheme->GetColor( "HudIcon_Green", Color( 16, 255, 16, 255 ) );
@@ -94,7 +121,13 @@ void CHudBaseAccount::Paint()
 		}
 
 		V_snwprintf( param1, ARRAYSIZE(param1), L"%d", weaponindex + 1 );
-		V_snwprintf( param2, ARRAYSIZE(param2), L"%d", engine->GetAchievementMgr()->GetNumProgressiveGunGameWeapons() );
+		// The weapon count comes from the game rules (which are already being
+		// queried just above) rather than the achievement manager: this
+		// branch's IAchievementMgr has no gun-game accessor, and the game rules
+		// version is per-team, which is what this readout wants anyway.
+		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+		int nTeamID = pLocalPlayer ? pLocalPlayer->GetTeamNumber() : 0;
+		V_snwprintf( param2, ARRAYSIZE(param2), L"%d", CSGameRules()->GetNumProgressiveGunGameWeapons( nTeamID ) );
 
 		g_pVGuiLocalize->ConstructString( unicode, sizeof( unicode ), pReason, 2, param1, param2 );
 

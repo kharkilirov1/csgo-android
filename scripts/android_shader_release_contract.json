@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "contract": "android_external_shader_content",
+  "runtime_path_id": "PLATFORM",
+  "runtime_root": "shaders",
+  "distribution_model": "external_user_owned_or_locally_generated",
+  "bundle_vcs_in_apk": false,
+  "provenance_is_human_gate": true,
+  "runtime_shader_creation_witness_required": true,
+  "inventory": {
+    "coverage": "all_android_linked_dx9_shader_paths",
+    "active_sources": {
+      "wscript": "materialsystem/stdshaders/wscript",
+      "shader_root": "materialsystem/stdshaders",
+      "expected_source_count": 89,
+      "source_list_sha256": "7eb9e1ef996cee0e1b528c6e363a3aca4bdbed07ae361d15320b93f9e487854e"
+    },
+    "helper_roots": [
+      {
+        "source_dir": "materialsystem/stdshaders/fxctmp9",
+        "source_suffix": ".inc",
+        "target_dir": "fxc"
+      },
+      {
+        "source_dir": "materialsystem/stdshaders/vshtmp9",
+        "source_suffix": ".inc",
+        "target_dir": "vsh"
+      }
+    ],
+    "extra_helper_assets": [
+      {
+        "helper": "materialsystem/stdshaders/fxctmp9/sample4x4_ps20.inc",
+        "target_dir": "fxc"
+      }
+    ],
+    "expected_count": 245,
+    "path_set_sha256": "bc30f20014e6b9ca422e0027160d2963b60a558d4630cf84ad7620a37540139a",
+    "geometry_sha256": "ea8c029cd547a68df963e83e0e8e9a603c134beea1f53a18fc1fc0cb423fd7c7"
+  },
+  "sparse_probe_manifest": {
+    "path": "scripts/shader_vcs_manifest.json",
+    "expected_count": 8,
+    "release_qualifying": false
+  }
+}

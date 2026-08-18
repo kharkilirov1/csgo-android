@@ -31,7 +31,12 @@ PLATFORM_INTERFACE int64 GetHardwareClockReliably();
 inline unsigned long long GetTimebaseRegister( void )
 {
 	#if defined( __aarch64__ )
-	    return __builtin_readcyclecounter();
+	    // __builtin_readcyclecounter() reads pmccntr_el0; userspace PMU access
+	    // is disabled on Android/Linux, so it SIGILLs on first use. The generic
+	    // timer counter is always EL0-readable.
+	    unsigned long long Val;
+	    __asm__ __volatile__ ( "mrs %0, cntvct_el0" : "=r" (Val) );
+	    return Val;
 	#elif defined( PLATFORM_64BITS )
     unsigned long long Low, High;
     __asm__ __volatile__ ( "rdtsc" : "=a" (Low), "=d" (High) );

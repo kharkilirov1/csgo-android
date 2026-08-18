@@ -145,7 +145,8 @@ void CLeaderboardRequestQueue::OnQueryFinished()
 	m_bQueryRunning = false;
 
 	DevMsg( "CLeaderboardRequestQueue::OnQueryFinished\n" );
-	KeyValuesDumpAsDevMsg( m_pFinishedRequest, 1 );
+	if ( m_pFinishedRequest )
+		KeyValuesDumpAsDevMsg( m_pFinishedRequest, 1 );
 
 	// Stuff the data into the players
 #ifdef _X360
@@ -160,11 +161,12 @@ void CLeaderboardRequestQueue::OnQueryFinished()
 #else
 	int iCtrlr = XBX_GetPrimaryUserId();
 	{
-		XUID xuid = g_pPlayerManager->GetLocalPlayer( iCtrlr )->GetXUID();
+		IPlayerLocal *pLocalPlayer = g_pPlayerManager->GetLocalPlayer( iCtrlr );
+		XUID xuid = pLocalPlayer ? pLocalPlayer->GetXUID() : 0;
 #endif
 
 		KeyValues *pUserViews = NULL;
-		if ( xuid )
+		if ( xuid && m_pFinishedRequest )
 			pUserViews = m_pFinishedRequest->FindKey( CFmtStr( "%llx", xuid ) );
 
 		if ( pUserViews )
@@ -218,6 +220,15 @@ void CLeaderboardRequestQueue::OnStartNewQuery()
 	if ( m_pFinishedRequest )
 		m_pFinishedRequest->deleteThis();
 	m_pFinishedRequest = NULL;
+
+#if !defined( _X360 ) && !defined( NO_STEAM ) && !defined( SWDS )
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	if ( !pSteamUserStats )
+	{
+		Cleanup();
+		return;
+	}
+#endif
 
 #if !defined( NO_STEAM ) && !defined( SWDS )
 	extern CInterlockedInt g_numSteamLeaderboardWriters;
@@ -294,7 +305,7 @@ void CLeaderboardRequestQueue::OnStartNewQuery()
 
 		DevMsg( "    View: %s (%d)\n", szViewName, dwViewId );
 	}
-#elif !defined( NO_STEAM )
+#elif !defined( NO_STEAM ) && !defined( SWDS )
 	// Clear view descriptions
 	if ( m_pViewDescription )
 		m_pViewDescription->deleteThis();
@@ -317,11 +328,14 @@ void CLeaderboardRequestQueue::OnStartNewQuery()
 
 		m_pViewDescription->SetString( ":name", szViewName );
 
-		SteamAPICall_t hCall = steamapicontext->SteamUserStats()->FindLeaderboard( szViewName );
+		SteamAPICall_t hCall = pSteamUserStats->FindLeaderboard( szViewName );
 		m_CallbackOnLeaderboardFindResult.Set( hCall, this, &CLeaderboardRequestQueue::Steam_OnLeaderboardFindResult );
 		m_bQueryRunning = true;
 		break;
 	}
+#else
+	Cleanup();
+	return;
 #endif
 
 	// Clean up all the requests in the queue
@@ -508,7 +522,8 @@ KeyValues * CLeaderboardRequestQueue::FindViewDescription( DWORD dwViewId )
 
 void CLeaderboardRequestQueue::Steam_OnLeaderboardFindResult( LeaderboardFindResult_t *p, bool bError )
 {
-	if ( bError || !p->m_bLeaderboardFound )
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
+	if ( bError || !p || !pSteamUserStats || !p->m_bLeaderboardFound )
 	{
 		DevMsg( "Steam leaderboard was not found.\n" );
 		OnQueryFinished();
@@ -516,7 +531,7 @@ void CLeaderboardRequestQueue::Steam_OnLeaderboardFindResult( LeaderboardFindRes
 	}
 
 	// Download the data
-	SteamAPICall_t hCall = steamapicontext->SteamUserStats()->DownloadLeaderboardEntries( p->m_hSteamLeaderboard,
+	SteamAPICall_t hCall = pSteamUserStats->DownloadLeaderboardEntries( p->m_hSteamLeaderboard,
 		k_ELeaderboardDataRequestGlobalAroundUser, 0, 0 );
 	m_CallbackOnLeaderboardScoresDownloaded.Set( hCall, this, &CLeaderboardRequestQueue::Steam_OnLeaderboardScoresDownloaded );
 }
@@ -525,9 +540,12 @@ void CLeaderboardRequestQueue::Steam_OnLeaderboardScoresDownloaded( LeaderboardS
 {
 	// Fetch the data if found and no error
 	LeaderboardEntry_t lbe;
+	ISteamUserStats *pSteamUserStats = steamapicontext ? steamapicontext->SteamUserStats() : NULL;
 	if ( !bError &&
+		p &&
+		pSteamUserStats &&
 		p->m_cEntryCount == 1 &&
-		steamapicontext->SteamUserStats()->GetDownloadedLeaderboardEntry( p->m_hSteamLeaderboardEntries, 0, &lbe, NULL, 0 ) )
+		pSteamUserStats->GetDownloadedLeaderboardEntry( p->m_hSteamLeaderboardEntries, 0, &lbe, NULL, 0 ) )
 	{
 		ProcessResults( lbe );
 	}
@@ -536,5 +554,3 @@ void CLeaderboardRequestQueue::Steam_OnLeaderboardScoresDownloaded( LeaderboardS
 }
 
 #endif
-
-

@@ -1,0 +1,86 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+from waflib import Utils
+import os
+
+top = '.'
+PROJECT_NAME = 'vscript'
+
+def options(opt):
+	return
+
+def configure(conf):
+	return
+
+def build(bld):
+	# Squirrel is the only VM this build provides. vscript.cpp gates Lua behind
+	# !LINUX and GameMonkey/Python behind VGM_ENABLED/VPYTHON_ENABLED, none of
+	# which are set here, so only the Squirrel backend has to be compiled.
+	squirrel = 'languages/squirrel/'
+
+	source = [
+		'vscript.cpp',
+		squirrel + 'vsquirrel/vsquirrel.cpp',
+		'../public/tier0/memoverride.cpp',
+	]
+
+	# Squirrel core VM
+	source += [ squirrel + 'squirrel/' + f for f in [
+		'sqapi.cpp', 'sqbaselib.cpp', 'sqclass.cpp', 'sqcompiler.cpp',
+		'sqdebug.cpp', 'sqfuncstate.cpp', 'sqlexer.cpp', 'sqmem.cpp',
+		'sqobject.cpp', 'sqstate.cpp', 'sqtable.cpp', 'sqvm.cpp',
+	] ]
+
+	# Standard library pieces vsquirrel.cpp pulls in (aux/string/math), plus the
+	# stream/blob/rex/system units they depend on. sqstdio.cpp is deliberately
+	# left out: vsquirrel.cpp supplies its own sqstd_loadfile/sqstd_register_iolib
+	# so that script loading goes through the engine filesystem rather than stdio.
+	source += [ squirrel + 'sqstdlib/' + f for f in [
+		'sqstdaux.cpp', 'sqstdblob.cpp', 'sqstdmath.cpp',
+		'sqstdrex.cpp', 'sqstdstream.cpp', 'sqstdstring.cpp', 'sqstdsystem.cpp',
+	] ]
+
+	# Remote script debugger that vsquirrel.cpp links against (sqrdbg.h /
+	# sqdbgserver.h). main.cpp is the standalone debugger executable's entry
+	# point, not part of the library.
+	source += [ squirrel + 'sqdbg/' + f for f in [
+		'sqdbgserver.cpp', 'sqrdbg.cpp',
+	] ]
+
+	# SqPlus binding layer. SquirrelBindingsUtilsWin32.cpp is deliberately
+	# omitted - it is the Win32-only half of the bindings.
+	source += [ squirrel + 'sqplus/' + f for f in [
+		'SqPlus.cpp', 'SquirrelBindingsUtils.cpp', 'SquirrelObject.cpp',
+		'SquirrelVM.cpp',
+	] ]
+
+	includes = [
+		'.',
+		squirrel + 'include',
+		squirrel + 'sqplus',
+		squirrel + 'sqdbg',
+		'../public',
+		'../public/tier0',
+		'../public/tier1',
+		'../common',
+	]
+
+	defines = ['VSCRIPT_DLL_EXPORT']
+
+	libs = ['tier0', 'tier1', 'vstdlib', 'interfaces', 'mathlib']
+
+	install_path = bld.env.LIBDIR
+
+	bld.shlib(
+		source   = source,
+		target   = PROJECT_NAME,
+		name     = PROJECT_NAME,
+		features = 'c cxx',
+		includes = includes,
+		defines  = defines,
+		use      = libs,
+		install_path = install_path,
+		subsystem = bld.env.MSVC_SUBSYSTEM,
+		idx      = bld.get_taskgen_count()
+	)

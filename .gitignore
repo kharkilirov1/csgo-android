@@ -43,3 +43,14 @@ source-engine.sln
 # temporary submodule metadata (do not commit)
 .git.disabled
 **/.git.disabled/
+
+# Android APK build
+android/csgo-launcher/jniLibs/
+android/csgo-launcher/local.properties
+android/csgo-launcher/build/
+android/csgo-launcher/app/build/
+android/csgo-launcher/.gradle/
+
+# local diagnostics (screenshots, APKs, logs)
+.diag/
+.codex-*.png

@@ -1,11 +1,12 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: Weapon data file parsing, shared by game & client dlls.
 //
 // $NoKeywords: $
 //=============================================================================//
+#include <stdio.h>
 #include "cbase.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <tier0/mem.h>
 #include "filesystem.h"
 #include "utldict.h"
@@ -529,6 +530,7 @@ bool CWeaponDatabase::Init()
 
 bool CWeaponDatabase::LoadManifest()
 {
+	printf( "WPD: LoadManifest begin\n" );
 	// FIXME[pmf]: this is defined as a virtual in g_pGameRules, but it isn't construction yet...
 	const unsigned char szEncryptionKey[] = "d7NSuLq2";
 
@@ -544,6 +546,7 @@ bool CWeaponDatabase::LoadManifest()
 				char fileBase[512];
 				Q_FileBase( sub->GetString(), fileBase, sizeof(fileBase) );
 
+				printf( "WPD: loading %s\n", fileBase );
 				LoadWeaponDataFromFile( filesystem, fileBase, szEncryptionKey );
 			}
 			else
@@ -553,7 +556,9 @@ bool CWeaponDatabase::LoadManifest()
 		}
 	}
 
+	printf( "WPD: manifest files done\n" );
 	LoadEquipmentData();
+	printf( "WPD: equipment done\n" );
 
 	return true;
 }

@@ -9,7 +9,7 @@
 
 using namespace vgui;
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/RadioButton.h>
 #include <vgui_controls/CheckButton.h>

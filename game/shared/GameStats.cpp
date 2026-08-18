@@ -7,7 +7,7 @@
 #include "cbase.h"
 
 #include "igamesystem.h"
-#include "GameStats.h"
+#include "gamestats.h"
 #include "tier1/utlstring.h"
 #include "filesystem.h"
 #include "tier1/utlbuffer.h"
@@ -1003,6 +1003,11 @@ bool CBaseGameStats::LoadFromFile( void )
 
 bool CBaseGameStats_Driver::Init()
 {
+#ifdef ANDROID
+	// Telemetry/upload stats are Steam/desktop only; skip entirely on Android.
+	// The stock init path decodes embedded JPEG data that crashes the port.
+	return true;
+#endif
 	const char *pGameDir = CommandLine()->ParmValue( "-game", "hl2" );
 
 	//standardizing is a good thing

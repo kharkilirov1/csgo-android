@@ -10,7 +10,7 @@
 #pragma once
 #endif
 
-#include <utlsortvector.h>
+#include <UtlSortVector.h>
 #include <utlhashtable.h>
 #include "ihasattributes.h"
 #include "ihasowner.h"

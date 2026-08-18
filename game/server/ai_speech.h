@@ -11,7 +11,7 @@
 #include "utlmap.h"
 
 #include "soundflags.h"
-#include "ai_responsesystem.h"
+#include "AI_ResponseSystem.h"
 #include "utldict.h"
 #include "ai_speechconcept.h"
 

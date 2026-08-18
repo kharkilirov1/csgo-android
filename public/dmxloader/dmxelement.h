@@ -16,7 +16,7 @@
 #include "tier1/utlrbtree.h"
 #include "tier1/utlsymbol.h"
 #include "tier1/mempool.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "dmxloader/dmxattribute.h"
 
 

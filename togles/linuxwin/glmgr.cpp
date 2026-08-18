@@ -1800,6 +1800,8 @@ CGLMProgram	*GLMContext::NewProgram( EGLMProgramType type, char *progString, con
 {
 	//hushed GLM_FUNC;
 
+	printf( "GLM compile %s: %s\n", ( type == kGLMVertexProgram ) ? "vs" : "fs", pShaderName ? pShaderName : "?" );
+
 	CGLMProgram *prog = new CGLMProgram( this, type );
 	
 	prog->SetProgramText( progString );
@@ -2204,8 +2206,14 @@ ConVar glm_literefresh_capslock( "glm_literefresh_capslock", "0" );
 
 extern ConVar gl_blitmode;
 
+int g_nLiveTex = 0, g_nLiveFBO = 0, g_nLiveBuf = 0, g_nLiveProg = 0;
+long long g_nLiveBufBytes = 0;
+long long g_nLiveTexBytes = 0;
+char g_lastTexLabel[64] = {0};
+char g_lastBufKind[64] = {0};
 void GLMContext::Present( CGLMTex *tex )
 {
+	{ static int s_n = 0; if ( ( s_n % 600 ) == 0 ) printf( "GLCNT: presents=%d liveTex=%d texMB=%lld lastTex=%.48s liveFBO=%d liveBuf=%d bufMB=%lld lastBuf=%.48s\n", s_n, g_nLiveTex, g_nLiveTexBytes >> 20, g_lastTexLabel, g_nLiveFBO, g_nLiveBuf, g_nLiveBufBytes >> 20, g_lastBufKind ); s_n++; }
 	GLM_FUNC;
 	
 	{
@@ -2453,6 +2461,9 @@ GLMContext::GLMContext( IDirect3DDevice9 *pDevice, GLMDisplayParams *params )
 #if defined( USE_SDL )
 	m_ctx = (SDL_GLContext)GetGLContextForWindow( params ? (void*)params->m_focusWindow : NULL );
 	MakeCurrent( true );
+	// Boot breadcrumbs: failures in this window are often silent on device
+	// (in-driver hang or uncatchable kill), so mark progress explicitly.
+	printf( "BOOT: GL context made current\n" );
 #else
 #error
 #endif
@@ -2583,6 +2594,7 @@ GLMContext::GLMContext( IDirect3DDevice9 *pDevice, GLMDisplayParams *params )
 	m_preload2DTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preload2DTexFragmentProgramText, "preload2DTex" );
 	m_preload3DTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preload3DTexFragmentProgramText, "preload3DTex" );
 	m_preloadCubeTexFragmentProgram	=	NewProgram(kGLMFragmentProgram, g_preloadCubeTexFragmentProgramText, "preloadCube" );
+	printf( "BOOT: bootstrap shaders compiled\n" );
 		
 	//memset( &m_drawVertexSetup, 0, sizeof(m_drawVertexSetup) );
 	SetVertexAttributes( NULL );	// will set up all the entries in m_drawVertexSetup
@@ -4909,6 +4921,7 @@ static inline uint GetDataTypeSizeInBytes( GLenum dataType )
 
 void GLMContext::DrawRangeElementsNonInline( GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices, uint baseVertex, CGLMBuffer *pIndexBuf )
 {
+	{ static int s_nDRE = 0; if ( s_nDRE < 30 ) printf( "DRE: noninline #%d mode=%d count=%d\n", s_nDRE++, mode, count ); }
 #if GLMDEBUG
 	GLM_FUNC;
 #else
@@ -5033,11 +5046,11 @@ void GLMContext::DrawRangeElements(GLenum mode, GLuint start, GLuint end, GLsize
 	if ( pIndexBuf->m_bPseudo )
 	{
 		// you have to pass actual address, not offset
-		indicesActual = (void*)( (int)indicesActual + (int)pIndexBuf->m_pPseudoBuf );
-	} 
+		indicesActual = (void*)( (intp)indicesActual + (intp)pIndexBuf->m_pPseudoBuf );
+	}
 	if (pIndexBuf->m_bUsingPersistentBuffer)
 	{
-		indicesActual = (void*)( (int)indicesActual + (int)pIndexBuf->m_nPersistentBufferStartOffset );
+		indicesActual = (void*)( (intp)indicesActual + (intp)pIndexBuf->m_nPersistentBufferStartOffset );
 	}
 
 #if GLMDEBUG

@@ -534,19 +534,31 @@ bool CEngineAPI::Connect( CreateInterfaceFn factory )
 	// Store off the app system factory...
 	g_AppSystemFactory = factory;
 
+	// Every early-out here used to be silent, which on Android turned into an
+	// undebuggable "failed during stage CONNECTION" with no cause in the log.
+	// Name the failing step so the on-device launcher.log identifies it.
 	if ( !BaseClass::Connect( factory ) )
+	{
+		Warning( "CEngineAPI::Connect: base app-system Connect failed.\n" );
 		return false;
+	}
 
 	g_pFileSystem = g_pFullFileSystem;
 	if ( !g_pFileSystem )
+	{
+		Warning( "CEngineAPI::Connect: no IFileSystem.\n" );
 		return false;
+	}
 
 #ifndef DBGFLAG_STRINGS_STRIP
 	g_pFileSystem->SetWarningFunc( Warning );
 #endif
 
 	if ( !Shader_Connect( true ) )
+	{
+		Warning( "CEngineAPI::Connect: Shader_Connect failed.\n" );
 		return false;
+	}
 
 	g_pPhysics = (IPhysics*)factory( VPHYSICS_INTERFACE_VERSION, NULL );
 
@@ -566,13 +578,28 @@ bool CEngineAPI::Connect( CreateInterfaceFn factory )
 	{
 		avi = (IAvi*)factory( AVI_INTERFACE_VERSION, NULL );
 		if ( !avi )
+		{
+			Warning( "CEngineAPI::Connect: no IAvi.\n" );
 			return false;
+		}
 	}
 
 #if ( !defined( _GAMECONSOLE ) || defined( BINK_ENABLED_FOR_CONSOLE ) ) && defined( BINK_VIDEO )
 	bik = (IBik*)factory( BIK_INTERFACE_VERSION, NULL );
 	if ( !bik )
+	{
+#if defined( ANDROID )
+		// Nothing in this tree implements IBik (there is no valve_avi module),
+		// so on Android this requirement can never be met - and it was failing
+		// engine connection before anything reached the screen. Video playback
+		// is simply unavailable; every runtime consumer of the bik pointer is
+		// null-checked.
+		Warning( "CEngineAPI::Connect: no IBik; continuing without video playback.\n" );
+#else
+		Warning( "CEngineAPI::Connect: no IBik.\n" );
 		return false;
+#endif
+	}
 #endif
 
 #ifdef _PS3
@@ -800,8 +827,18 @@ bool CEngineAPI::SetStartupInfo( StartupInfo_t &info )
 	if ( !Steam3Client().IsInitialized() || !Steam3Client().SteamUser() ||
 		!Steam3Client().SteamUser()->GetSteamID().IsValid() || !Steam3Client().SteamUser()->GetSteamID().BIndividualAccount() || !Steam3Client().SteamUser()->GetSteamID().GetAccountID() )
 	{
+#if defined( ANDROID )
+		// The Android build links the stub steam_api (stub_steam/steam_api.cpp):
+		// there is no local Steam client, so the Steam3 context never initializes
+		// and SteamUser() is null by design. Requiring a live Steam login here is
+		// what put the "Failed to connect with local Steam Client process" dialog
+		// on screen. Continue without a Steam identity - offline/bot play does not
+		// need one, and every consumer of SteamUser() below is null-checked.
+		Warning( "Steam3Client not connected (stub steam_api); continuing without a Steam identity.\n" );
+#else
 		Error( "FATAL ERROR: Failed to connect with local Steam Client process!\n\nPlease make sure that you are running latest version of Steam Client.\nYou can check for Steam Client updates using Steam main menu:\n             Steam > Check for Steam Client Updates..." );
 		return false;
+#endif
 	}
 
 	//
@@ -815,14 +852,33 @@ bool CEngineAPI::SetStartupInfo( StartupInfo_t &info )
 			Msg( "USRLOCAL path using environment setting '%s':\n%s\n", "USRLOCAL" DLLExtTokenPaste2( VPCGAMECAPS ), pszLocalOverride );
 			g_pFileSystem->AddSearchPath( pszLocalOverride, "USRLOCAL" );
 		}
-		else if ( Steam3Client().SteamUser()->GetUserDataFolder( chUserLocalDataFolder, sizeof( chUserLocalDataFolder ) ) )
+		else if ( Steam3Client().SteamUser() && Steam3Client().SteamUser()->GetUserDataFolder( chUserLocalDataFolder, sizeof( chUserLocalDataFolder ) ) )
 		{
 			Msg( "USRLOCAL path using Steam profile data folder:\n%s\n", chUserLocalDataFolder );
 			g_pFileSystem->AddSearchPath( chUserLocalDataFolder, "USRLOCAL" );
 		}
 		else
 		{
+#if defined( ANDROID )
+			// No Steam profile on Android - keep user-local data (configs,
+			// saves) under the app's writable data directory so writes to the
+			// USRLOCAL path succeed.
+			char const *pszAndroidData = getenv( "APP_DATA_PATH" );
+			if ( pszAndroidData && *pszAndroidData )
+			{
+				char chAndroidUsrLocal[ MAX_PATH ] = {};
+				V_ComposeFileName( pszAndroidData, "usrlocal", chAndroidUsrLocal, sizeof( chAndroidUsrLocal ) );
+				g_pFileSystem->CreateDirHierarchy( chAndroidUsrLocal, NULL );
+				Msg( "USRLOCAL path using Android data folder:\n%s\n", chAndroidUsrLocal );
+				g_pFileSystem->AddSearchPath( chAndroidUsrLocal, "USRLOCAL" );
+			}
+			else
+			{
+				Warning( "USRLOCAL path not found!\n" );
+			}
+#else
 			Warning( "USRLOCAL path not found!\n" );
+#endif
 		}
 	}
 #endif
@@ -2061,7 +2117,18 @@ void Sys_Version( bool bDedicated )
 
 	if ( !ParseSteamInfFile( "steam.inf", g_unSteamAppID ) )
 	{
+#if defined( ANDROID )
+		// The Android build is not launched through Steam and the game content
+		// may ship without a (complete) steam.inf. The version/product strings
+		// were already defaulted above (VERSION_STRING/PRODUCT_STRING), and every
+		// consumer of the AppID falls back to the CS:GO id (730) when it is left
+		// invalid - see baseserver.cpp. So warn and continue instead of killing
+		// startup at the first rendered frame.
+		Warning( "Sys_Version: no usable steam.inf; continuing with default version %s (appid left unresolved).\n",
+			g_sVersionString.String() );
+#else
 		Sys_Error( "Unable to load version from steam.inf" );
+#endif
 	}
 
 	// if we aren't launched by Steam try reading a local perforce inf file

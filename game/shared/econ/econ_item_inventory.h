@@ -13,7 +13,7 @@
 #include "igamesystem.h"
 #include "econ_entity.h"
 #include "econ_item_view.h"
-#include "utlsortvector.h"
+#include "UtlSortVector.h"
 
 #if !defined(NO_STEAM)
 #include "steam/steam_api.h"

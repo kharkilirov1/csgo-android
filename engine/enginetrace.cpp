@@ -1,4 +1,4 @@
-//====== Copyright © 1996-2005, Valve Corporation, All rights reserved. =====//
+//====== Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. =====//
 //
 // Purpose: 
 //
@@ -625,7 +625,10 @@ void CEngineTrace::GetBrushesInAABB( const Vector &vMins, const Vector &vMaxs, C
 	pTraceInfo->m_ispoint = false;
 	pTraceInfo->m_isswept = false;
 
-	int *pLeafList = (int *)stackalloc( pTraceInfo->m_pBSPData->numleafs * sizeof( int ) );
+	// heap: numleafs on a big BSP is a few hundred KB, too big for the
+	// ~1MB engine worker stacks
+	CUtlVector<int> leafList( 0, pTraceInfo->m_pBSPData->numleafs );
+	int *pLeafList = leafList.Base();
 	int iNumLeafs = CM_BoxLeafnums( vMins, vMaxs, pLeafList, pTraceInfo->m_pBSPData->numleafs, NULL, nCModelIndex );
 
 	TraceCounter_t *pVisitedBrushes = pTraceInfo->m_BrushCounters[0].Base();
@@ -782,7 +785,8 @@ CPhysCollide* CEngineTrace::GetCollidableFromDisplacementsInAABB( const Vector& 
 {
 	CCollisionBSPData *pBSPData = GetCollisionBSPData();
 
-	int *pLeafList = (int *)stackalloc( pBSPData->numleafs * sizeof( int ) ); 
+	CUtlVector<int> leafList( 0, pBSPData->numleafs );
+	int *pLeafList = leafList.Base();
 	int iLeafCount = CM_BoxLeafnums( vMins, vMaxs, pLeafList, pBSPData->numleafs, NULL );
 
 	// Get all the triangles for displacement surfaces in this box, add them to a polysoup
@@ -902,7 +906,8 @@ int CEngineTrace::GetMeshesFromDisplacementsInAABB( const Vector& vMins, const V
 	int iMeshesWritten = 0;
 	CCollisionBSPData *pBSPData = GetCollisionBSPData();
 
-	int *pLeafList = (int *)stackalloc( pBSPData->numleafs * sizeof( int ) ); 
+	CUtlVector<int> leafList( 0, pBSPData->numleafs );
+	int *pLeafList = leafList.Base();
 	int iLeafCount = CM_BoxLeafnums( vMins, vMaxs, pLeafList, pBSPData->numleafs, NULL );
 
 	TraceInfo_t *pTraceInfo = BeginTrace();

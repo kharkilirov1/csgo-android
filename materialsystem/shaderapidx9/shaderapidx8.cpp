@@ -68,14 +68,14 @@ mat_fullbright 1 doesn't work properly on alpha materials in testroom_standards
 #include "tier0/icommandline.h"
 #include "materialsystem/ishadersystem.h"
 #include "tier1/convar.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "vstdlib/vstrtools.h"
-#include "color.h"
+#include "Color.h"
 #ifdef RECORDING
 #include "materialsystem/IShader.h"
 #endif
 #include "../stdshaders/common_hlsl_cpp_consts.h" // hack hack hack!
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "bitmap/imageformat.h"
 #include "materialsystem/idebugtextureinfo.h"
 #include "tier1/utllinkedlist.h"
@@ -3076,10 +3076,11 @@ bool CShaderAPIDx8::RestorePersistedDisplay( bool bUseFrontBuffer )
 //-----------------------------------------------------------------------------
 // Initialize, shutdown the Device....
 //-----------------------------------------------------------------------------
-bool CShaderAPIDx8::OnDeviceInit() 
+bool CShaderAPIDx8::OnDeviceInit()
 {
+	Msg( "OnDeviceInit: internal render targets\n" );
 	AcquireInternalRenderTargets();
-	
+
 	g_pHardwareConfig->CapsForEdit().m_TextureMemorySize = g_pShaderDeviceMgrDx8->GetVidMemBytes( m_nAdapter );
 
 	CreateMatrixStacks();
@@ -3093,12 +3094,14 @@ bool CShaderAPIDx8::OnDeviceInit()
 #endif
 
 	// Initialize the shader manager
+	Msg( "OnDeviceInit: shader manager\n" );
 	ShaderManager()->Init();
 
 	// Initialize the shader shadow
 	ShaderShadow()->Init();
 
 	// Initialize the mesh manager
+	Msg( "OnDeviceInit: mesh manager\n" );
 	MeshMgr()->Init();
 
 	m_bToolsMode = IsPlatformWindows() && ( CommandLine()->CheckParm( "-tools" ) != NULL );
@@ -3110,11 +3113,14 @@ bool CShaderAPIDx8::OnDeviceInit()
 	m_TransitionTable.Init();
 
 	// Initialize the render state
+	Msg( "OnDeviceInit: render state\n" );
 	InitRenderState();
 
 	// Clear the z and color buffers
+	Msg( "OnDeviceInit: clear\n" );
 	ClearBuffers( true, true, true, -1, -1 );
 
+	Msg( "OnDeviceInit: frame sync objects\n" );
 	AllocFrameSyncObjects();
 	AllocNonInteractiveRefreshObjects();
 
@@ -3152,10 +3158,11 @@ bool CShaderAPIDx8::OnDeviceInit()
 
 	Dx9Device()->BeginScene();
 
+	Msg( "OnDeviceInit: done\n" );
 	return true;
 }
 
-void CShaderAPIDx8::OnDeviceShutdown() 
+void CShaderAPIDx8::OnDeviceShutdown()
 {
 	if ( IsX360() || !IsActive() )
 		return;
@@ -5201,11 +5208,11 @@ void CShaderAPIDx8::ForceHardwareSync_WithManagedTexture()
 
 	D3DLOCKED_RECT rect;
 	HRESULT hr = m_pFrameSyncTexture->LockRect( 0, &rect, NULL, 0 );
-	if ( SUCCEEDED( hr ) )
+	if ( SUCCEEDED( hr ) && rect.pBits )
 	{
 		// modify..
 		unsigned long *pData = (unsigned long*)rect.pBits;
-		(*pData)++; 
+		(*pData)++;
 
 		m_pFrameSyncTexture->UnlockRect( 0 );
 
@@ -15159,7 +15166,7 @@ void CShaderAPIDx8::CopyBitsFromHostSurface( IDirect3DSurface* pSurfaceBits,
 	HRESULT hr;
 	int flags = D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK;
 	hr = pSurfaceBits->LockRect( &lockedRect, &rect, flags );
-	if ( !FAILED( hr ) )
+	if ( !FAILED( hr ) && lockedRect.pBits )
 	{
 		unsigned char *pImage = (unsigned char *)lockedRect.pBits;
 		ShaderUtil()->ConvertImageFormat( (unsigned char *)pImage, srcFormat,

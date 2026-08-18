@@ -32,7 +32,7 @@
 #include "tier0/memdbgon.h"
 
 CGLMFBO::CGLMFBO( GLMContext *ctx )
-{
+{ extern int g_nLiveFBO; g_nLiveFBO++;
 	m_ctx = ctx;
 	m_ctx->CheckCurrent();
 	
@@ -43,7 +43,7 @@ CGLMFBO::CGLMFBO( GLMContext *ctx )
 
 
 CGLMFBO::~CGLMFBO( )
-{
+{ extern int g_nLiveFBO; g_nLiveFBO--;
 	m_ctx->CheckCurrent();
 
 	// detach all known attached textures first... necessary ?

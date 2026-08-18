@@ -503,6 +503,12 @@ void CDmxAttribute::SetValue( DmAttributeType_t type, const void *pSrc, int nLen
 	{
 		nLen = CDmxAttribute::AttributeDataSize( type );
 	}
+#ifdef ANDROID
+	if ( nLen < 0 || nLen > 4096 )
+	{
+		return;
+	}
+#endif
 	memcpy( m_pData, pSrc, nLen );
 }
 
@@ -522,6 +528,13 @@ void CDmxAttribute::SetArrayValue( DmAttributeType_t type, const void *pSrc, int
 	int nDestStride = CDmxAttribute::AttributeDataSize( basicType );
 	Assert( nDataTypeSize <= nDestStride );
 	nDataTypeSize = MIN( nDataTypeSize, nDestStride );
+
+#ifdef ANDROID
+	if ( nArrayLength < 0 || nArrayLength > 0x10000 )
+	{
+		return;
+	}
+#endif
 
 	SetArrayCount( nArrayLength );
 	void *pDest = (void *)GetArrayBase();
@@ -562,17 +575,19 @@ void CDmxAttribute::GetArrayValue( DmAttributeType_t type, void *pDest, int nDat
 
 	int nSrcArrayLength = GetArrayCount();
 	const void *pSrc = GetArrayBase();
-	if ( nSrcArrayLength && pSrc )
+	// Guard: never copy more than the destination can hold
+	int nCopyLength = MIN( nSrcArrayLength, nDestArrayLength );
+	if ( nSrcArrayLength && pSrc && nCopyLength > 0 )
 	{
 		if ( nSrcStride == nDataTypeSize )
 		{
-			memcpy( pDest, pSrc, nSrcArrayLength*nDataTypeSize );
+			memcpy( pDest, pSrc, nCopyLength*nDataTypeSize );
 		}
 		else
 		{
 			byte       *pByteDst =       (byte *)pDest;
 			const byte *pByteSrc = (const byte *)pSrc;
-			for ( int i = 0; i < nSrcArrayLength; i++ )
+			for ( int i = 0; i < nCopyLength; i++ )
 			{
 				memcpy( pByteDst, pByteSrc, nDataTypeSize );
 				pByteDst += nDataTypeSize;
@@ -580,14 +595,14 @@ void CDmxAttribute::GetArrayValue( DmAttributeType_t type, void *pDest, int nDat
 			}
 		}
 	}
-	if ( ( nSrcArrayLength < nDestArrayLength ) && pDefaultString )
+	if ( ( nCopyLength < nDestArrayLength ) && pDefaultString )
 	{
 		CDmxAttribute temp( NULL );
 		temp.AllocateDataMemory_AndConstruct( basicType );
 		temp.SetValueFromString( pDefaultString );
 
-		byte *pByteDst = ( (byte *)pDest ) + nSrcArrayLength*nDataTypeSize;
-		for ( int i = nSrcArrayLength; i < nDestArrayLength; i++ )
+		byte *pByteDst = ( (byte *)pDest ) + nCopyLength*nDataTypeSize;
+		for ( int i = nCopyLength; i < nDestArrayLength; i++ )
 		{
 			memcpy( pByteDst, temp.m_pData, nDataTypeSize );
 			pByteDst += nDataTypeSize;

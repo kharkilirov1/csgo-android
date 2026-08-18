@@ -33,9 +33,9 @@
 #include "tier1/interface.h"
 #include "tier0/dbg.h"
 #include "iregistry.h"
-#include "appframework/iappsystem.h"
+#include "appframework/IAppSystem.h"
 #include "appframework/AppFramework.h"
-#include <vgui/vgui.h>
+#include <vgui/VGUI.h>
 #include <vgui/ISurface.h>
 #include "tier0/platform.h"
 #include "tier0/memalloc.h"
@@ -84,6 +84,11 @@
 #include "xbox/xbox_console.h"
 #include "xbox/xbox_launch.h"
 #endif
+
+// For SCALEFORMUI_INTERFACE_VERSION when loading the Scaleform module (or, in
+// this tree, its no-op stub).
+#include "tier1/convar.h"
+#include "scaleformui/scaleformui.h"
 
 #ifdef LINUX
 #include "SDL.h"
@@ -748,16 +753,20 @@ bool CSourceAppSystemGroup::Create()
 		{ LAUNCHER_APPSYSTEM("soundsystem"),			SOUNDSYSTEM_INTERFACE_VERSION },
 #endif
 
-#if !defined( _GAMECONSOLE )
+// There is no valve_avi module in this tree - the Bink and QuickTime backends
+// need SDKs that aren't here, and BINK_VIDEO only gets defined as a side effect
+// of enabling the GL abstraction. Listing it here would make AddSystems() fail
+// and abort startup over video playback the build cannot do anyway.
+#if !defined( _GAMECONSOLE ) && !defined( POSIX )
     #if defined ( AVI_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			AVI_INTERFACE_VERSION },
-    #endif 		
+    #endif
     #if defined ( BINK_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			BIK_INTERFACE_VERSION },
  	#endif
-	#if defined( QUICKTIME_VIDEO ) 		
+	#if defined( QUICKTIME_VIDEO )
  		{ LAUNCHER_APPSYSTEM( "valve_avi" ),			QUICKTIME_INTERFACE_VERSION },
-    #endif		
+    #endif
 #elif defined( BINK_ENABLED_FOR_CONSOLE )
 		{ LAUNCHER_APPSYSTEM( "engine" ),				BIK_INTERFACE_VERSION },	
 #endif
@@ -804,8 +813,26 @@ bool CSourceAppSystemGroup::Create()
 			{ "", "" }
 		};
 
-		if ( !AddSystems( scaleformInfo ) ) 
-			return false;	
+		if ( !AddSystems( scaleformInfo ) )
+			return false;
+	}
+#else
+	{
+		// No Autodesk GFx in this tree, so "scaleformui" is the no-op stub
+		// module. Game code calls ScaleformUI() unconditionally, so it still
+		// has to resolve to something - otherwise every sfhud_* call site
+		// dereferences NULL. Only warn if it's missing: the engine boots fine
+		// without Scaleform, and a packaging slip shouldn't block startup.
+		AppSystemInfo_t scaleformInfo[] =
+		{
+			{ LAUNCHER_APPSYSTEM( "scaleformui" ),		SCALEFORMUI_INTERFACE_VERSION },
+			{ "", "" }
+		};
+
+		if ( !AddSystems( scaleformInfo ) )
+		{
+			Warning( "Failed to load the scaleformui stub; Scaleform UI calls will be unavailable.\n" );
+		}
 	}
 #endif // INCLUDE_SCALEFORM
 		
@@ -916,13 +943,53 @@ bool CSourceAppSystemGroup::PreInit()
 	if ( FileSystem_MountContent( fsInfo ) != FS_OK )
 		return false;
 
-#if defined( SUPPORT_VPK )
+#if defined( SUPPORT_VPK ) || defined( __ANDROID__ )
 	Msg( "start timing %f\n", Plat_FloatTime() );
 	char const *pVPKName = CommandLine()->ParmValue( "-vpk" );
 	if ( pVPKName )
 	{
 		fsInfo.m_pFileSystem->AddVPKFile( pVPKName );
 	}
+
+#if defined( __ANDROID__ )
+	// The Java launcher extracts the bundled touch/UI resources to a normal
+	// app-private file and supplies a comma-separated list here. Mount in
+	// reverse order at the head so the first Java entry (a caller-provided VPK)
+	// has the highest override priority, followed by the bundled extras, then
+	// the game's own VPKs.
+	char const *pExtraVPKList = getenv( "EXTRAS_VPK_PATH" );
+	if ( pExtraVPKList && pExtraVPKList[0] )
+	{
+		char vpkList[8192];
+		char *vpkPaths[32];
+		int vpkCount = 0;
+		V_strncpy( vpkList, pExtraVPKList, sizeof( vpkList ) );
+
+		char *saveptr = NULL;
+		for ( char *path = strtok_r( vpkList, ",", &saveptr );
+			path && vpkCount < ARRAYSIZE( vpkPaths );
+			path = strtok_r( NULL, ",", &saveptr ) )
+		{
+			if ( path[0] )
+				vpkPaths[vpkCount++] = path;
+		}
+
+		for ( int i = vpkCount - 1; i >= 0; --i )
+		{
+			FILE *vpkFile = fopen( vpkPaths[i], "rb" );
+			if ( vpkFile )
+			{
+				fclose( vpkFile );
+				Msg( "Mounting Android extras VPK: %s\n", vpkPaths[i] );
+				fsInfo.m_pFileSystem->AddVPKFile( vpkPaths[i], PATH_ADD_TO_HEAD );
+			}
+			else
+			{
+				Warning( "Android extras VPK is not readable: %s\n", vpkPaths[i] );
+			}
+		}
+	}
+#endif // __ANDROID__
 #endif
 
 	if ( IsPC() || !IsX360() )
@@ -1123,6 +1190,13 @@ bool GrabSourceMutex()
 
 	// Check TMPDIR environment variable for temp directory.
 	char *tmpdir = getenv( "TMPDIR" );
+
+#if defined( ANDROID )
+	// Android has no /tmp and TMPDIR may be unset; the app data dir is the
+	// writable place for the single-instance lock file.
+	if ( !tmpdir )
+		tmpdir = getenv( "APP_DATA_PATH" );
+#endif
 
 	// If it's NULL, or it doesn't exist, or it isn't a directory, fallback to /tmp.
 	struct stat buf;

@@ -168,7 +168,11 @@ def build(bld):
 	defines = game["defines"]
 	if bld.env.GAMES == 'csgo':
 		defines += ['CSGO=1', 'CSTRIKE15=1', 'CSTRIKE_REL_BUILD=1']
-		if bld.env.DEST_OS == 'android':
+		# The multithreaded LZMA sources (Threads.c/LzFindMt.c/MtCoder.c) are
+		# compiled for win32 only; every other target must use the
+		# single-threaded 7zip path, otherwise Threads.h pulls in Win32 types
+		# (HANDLE/CRITICAL_SECTION) that don't exist there.
+		if bld.env.DEST_OS != 'win32':
 			defines += ['_7ZIP_ST=1']
 
 	defines.remove('PROTECTED_THINGS_ENABLE')

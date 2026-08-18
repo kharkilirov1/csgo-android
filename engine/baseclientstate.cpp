@@ -709,6 +709,7 @@ void CBaseClientState::ConnectionClosing( const char *reason )
 //-----------------------------------------------------------------------------
 bool CBaseClientState::SetSignonState ( int state, int count, const CNETMsg_SignonState *msg )
 {
+	printf( "SGN: SetSignonState state=%d count=%d\n", state, count );
 	//	ConDMsg ("CL_SignonReply: %i\n", GetBaseLocalClient().signon);
 
 	if ( state < SIGNONSTATE_NONE || state > SIGNONSTATE_CHANGELEVEL )
@@ -1057,6 +1058,7 @@ void CAddressList::AddRemote( char const *pchAddress, char const *pchAlias )
 
 void CBaseClientState::ConnectInternal( const char *pchPublicAddress, char const *pchPrivateAddress, int numPlayers, const char* szJoinType )
 {
+	printf( "SGN: ConnectInternal %s\n", pchPublicAddress ? pchPublicAddress : "<null>" );
 #ifndef DEDICATED
 #if !defined( NO_STEAM )
 	if ( !IsX360() )	// X360 matchmaking sets the forced user info values
@@ -2443,6 +2445,8 @@ CNETMsg_PlayerAvatarData_t * CBaseClientState::AllocOwnPlayerAvatarData() const
 #ifndef DEDICATED
 	// If the game server is not GOTV then upload our own avatar data
 	extern ConVar sv_reliableavatardata;
+	if ( !Steam3Client().SteamUser() )
+		return NULL;	// stub steam_api: no SteamUser, no avatar
 	if ( ( this == &GetBaseLocalClient() )
 		&& !GetBaseLocalClient().ishltv
 		&& m_NetChannel && IsConnected()

@@ -1046,6 +1046,7 @@ void PlayerManager::Steam_OnPS3PSNStatusChange( PS3PSNStatusChange_t *pParam )
 void PlayerManager::OnGameUsersChanged()
 {
 	DevMsg( "PlayerManager::OnGameUsersChanged\n" );
+	bool bEnableFriendsUpdate = true;
 
 	//
 	// Cleanup all players currently created
@@ -1086,8 +1087,7 @@ void PlayerManager::OnGameUsersChanged()
 	}
 #else
 	#if !defined( NO_STEAM )
-	if ( !steamapicontext->SteamUser() )
-		return;
+	bEnableFriendsUpdate = steamapicontext && steamapicontext->SteamFriends();
 	#endif
 
 	PlayerLocal * player = new PlayerLocal( 0 );
@@ -1095,11 +1095,14 @@ void PlayerManager::OnGameUsersChanged()
 #endif
 
 	// Start a search when the sign-on changes
-	EnableFriendsUpdate( true );
+	EnableFriendsUpdate( bEnableFriendsUpdate );
 
 #if !defined( NO_STEAM )
-	Update(); // Update immediately to start friends search
-	Update(); // Update one more time to actually pick up friends
+	if ( bEnableFriendsUpdate )
+	{
+		Update(); // Update immediately to start friends search
+		Update(); // Update one more time to actually pick up friends
+	}
 #endif
 }
 

@@ -8,7 +8,7 @@
 #include <vgui/IScheme.h>
 #include <vgui/IVGui.h>
 #include "vgui/ISurface.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 
 #include <vgui_controls/Controls.h>
 #include <vgui_controls/Menu.h>

@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright ï¿½ 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -8,7 +8,7 @@
 #include "cbase.h"
 #include "soundscape_system.h"
 #include "soundscape.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "filesystem.h"
 #include "game.h"
 
@@ -163,7 +163,11 @@ bool CSoundscapeSystem::Init()
 	}
 	else
 	{
+#ifdef ANDROID
+		Warning( "Unable to load manifest file '%s' (continuing without soundscapes)\n", SOUNDSCAPE_MANIFEST_FILE );
+#else
 		Error( "Unable to load manifest file '%s'\n", SOUNDSCAPE_MANIFEST_FILE );
+#endif
 	}
 	manifest->deleteThis();
 	m_activeIndex = 0;

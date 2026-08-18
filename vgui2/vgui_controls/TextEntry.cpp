@@ -26,7 +26,7 @@
 #include <vgui/ISurface.h>
 #include <vgui/ILocalize.h>
 #include <vgui/IPanel.h>
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/MouseCode.h>
 
 #include <vgui_controls/Menu.h>

@@ -18,7 +18,7 @@
 #include "filesystem.h"
 #include "tier1/utlintrusivelist.h"
 #include "tier1/utlvector.h"
-#include "tier1/utlsortvector.h"
+#include "tier1/UtlSortVector.h"
 #include "tier1/utlmap.h"
 
 //#define VPK_ENABLE_SIGNING

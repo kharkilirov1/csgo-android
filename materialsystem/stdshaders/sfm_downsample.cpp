@@ -8,8 +8,8 @@
 #include "BaseVSShader.h"
 #include "common_hlsl_cpp_consts.h"
 
-#include "downsample_nohdr_ps20.inc"
-#include "downsample_nohdr_ps20b.inc"
+#include "Downsample_nohdr_ps20.inc"
+#include "Downsample_nohdr_ps20b.inc"
 
 // NOTE: This has to be the last file included!
 #include "tier0/memdbgon.h"

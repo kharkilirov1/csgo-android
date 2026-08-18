@@ -21,9 +21,9 @@
 #include <vgui/ILocalize.h>
 #include <vgui/ISurface.h>
 #include <vgui/IVGui.h>
-#include <vstdlib/ikeyvaluessystem.h>
+#include <vstdlib/IKeyValuesSystem.h>
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui_controls/ImageList.h>
 #include <vgui_controls/Label.h>
 #include <vgui_controls/SectionedListPanel.h>

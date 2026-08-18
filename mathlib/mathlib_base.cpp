@@ -4005,7 +4005,12 @@ void MathLib_Init( float gamma, float texGamma, float brightness, int overbright
 
 	// FIXME: Hook SSE into VectorAligned + Vector4DAligned
 
-#if !defined( _GAMECONSOLE )
+// This is an x86 capability check: cpuid() reports nothing on ARM, so the
+// flags read false there and this Error() was killing every Android launch
+// right after GL init. On AArch64 NEON is architecturally mandatory and all
+// of mathlib's SSE code compiles through sse2neon, so the capability this
+// check guards is always present - there is nothing to probe at runtime.
+#if !defined( _GAMECONSOLE ) && !defined( __arm__ ) && !defined( __aarch64__ )
 	// Grab the processor information:
 	const CPUInformation& pi = GetCPUInformation();
 

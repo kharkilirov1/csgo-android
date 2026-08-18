@@ -13,7 +13,7 @@
 
 using namespace vgui;
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui/ILocalize.h>
 #include <vgui_controls/ComboBox.h>
 #include <vgui_controls/CheckButton.h>

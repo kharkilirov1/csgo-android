@@ -6,7 +6,7 @@
 
 #include <locale.h>
 #include "vgui_surfacelib/BitmapFont.h"
-#include "vgui_surfacelib/fontmanager.h"
+#include "vgui_surfacelib/FontManager.h"
 #include "convar.h"
 #include <vgui/ISurface.h>
 #include <tier0/dbg.h>

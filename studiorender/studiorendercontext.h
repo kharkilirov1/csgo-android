@@ -40,6 +40,8 @@ struct StudioRenderConfigInternal_t : public StudioRenderConfig_t
 	bool m_bSupportsVertexAndPixelShaders : 1;
 	bool m_bSupportsOverbright : 1;
 	bool m_bEnableHWMorph : 1;
+	// Set while CStudioRender::ModelStats() runs its measuring pass.
+	bool m_bStatsMode : 1;
 };
 
 

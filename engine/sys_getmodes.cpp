@@ -490,6 +490,42 @@ int CVideoMode_Common::FindVideoMode( int nDesiredWidth, int nDesiredHeight, boo
 //-----------------------------------------------------------------------------
 // Choose the actual video mode based on the available modes
 //-----------------------------------------------------------------------------
+#ifdef __ANDROID__
+//-----------------------------------------------------------------------------
+// The GL display database cannot enumerate real video modes on Android, so
+// any mode lookup degenerates to a bogus 640x480 default. The launcher
+// creates the window at native display size, so expose that one true mode
+// here: native size, landscape-oriented, with a sane fallback.
+//-----------------------------------------------------------------------------
+static void GetAndroidNativeVideoModeSize( int &nWidth, int &nHeight )
+{
+	nWidth = 0;
+	nHeight = 0;
+
+	if ( g_pLauncherMgr )
+	{
+		uint nW = 0, nH = 0, nHz = 0;
+		g_pLauncherMgr->GetNativeDisplayInfo( -1, nW, nH, nHz );
+		nWidth = ( int )nW;
+		nHeight = ( int )nH;
+	}
+
+	// the game is landscape-locked; keep the long side as width
+	if ( nHeight > nWidth )
+	{
+		int nTmp = nWidth;
+		nWidth = nHeight;
+		nHeight = nTmp;
+	}
+
+	if ( nWidth < 640 || nHeight < 480 )
+	{
+		nWidth = 1280;
+		nHeight = 720;
+	}
+}
+#endif
+
 void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeight, bool bWindowed, bool bNoWindowBorder )
 {
 	// Fill in vid structure for the mode
@@ -502,6 +538,11 @@ void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeigh
 		videoMode.width = nWidth;
 		videoMode.height = nHeight;
 	}
+
+#ifdef __ANDROID__
+	// one true mode: the native display size, landscape-oriented
+	GetAndroidNativeVideoModeSize( videoMode.width, videoMode.height );
+#endif
 
 	m_bWindowed = bWindowed;
 	m_nModeWidth = videoMode.width;
@@ -516,6 +557,15 @@ void CVideoMode_Common::ResetCurrentModeForNewResolution( int nWidth, int nHeigh
 bool CVideoMode_Common::CreateGameWindow( int nWidth, int nHeight, bool bWindowed, bool bNoWindowBorder )
 {
     COM_TimestampedLog( "CVideoMode_Common::Init  CreateGameWindow" );
+
+#ifdef __ANDROID__
+	// the engine cannot enumerate real display modes on Android; the window
+	// is created at native size by the launcher, so force the native mode
+	// here and in every later mode (re)selection
+	GetAndroidNativeVideoModeSize( nWidth, nHeight );
+	bWindowed = false;
+	bNoWindowBorder = true;
+#endif
 
     // This allows you to have a window of any size.
     // Requires you to set both width and height for the window and
@@ -627,7 +677,13 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pBackgroundTexture = LoadVTF( buf, startupName );
 	if ( !m_pBackgroundTexture )
 	{
+#if defined( ANDROID )
+		// Startup splash art is optional on Android: skip the splash rather
+		// than killing the launch over missing content.
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", startupName );
+#else
 		Error( "Can't find background image '%s'\n", startupName );
+#endif
 		return false;
 	}
 
@@ -638,7 +694,13 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pLoadingTexture = LoadVTF( buf, pLoadingName );
 	if ( !m_pLoadingTexture )
 	{
+#if defined( ANDROID )
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", pLoadingName );
+		DestroyVTFTexture( m_pBackgroundTexture );
+		m_pBackgroundTexture = NULL;
+#else
 		Error( "Can't find background image %s\n", pLoadingName );
+#endif
 		return false;
 	}
 
@@ -652,7 +714,15 @@ bool CVideoMode_Common::SetupStartupGraphic()
 	m_pTitleTexture = LoadVTF( buf, pTitleName );
 	if ( !m_pTitleTexture )
 	{
+#if defined( ANDROID )
+		Warning( "SetupStartupGraphic: no '%s'; skipping the startup splash.\n", pTitleName );
+		DestroyVTFTexture( m_pBackgroundTexture );
+		m_pBackgroundTexture = NULL;
+		DestroyVTFTexture( m_pLoadingTexture );
+		m_pLoadingTexture = NULL;
+#else
 		Error( "Can't find title image %s\n", pTitleName );
+#endif
 		return false;
 	}
 
@@ -767,7 +837,12 @@ void CVideoMode_Common::DrawStartupGraphic()
 	}
 
 	if ( !SetupStartupGraphic() )
+	{
+		Warning( "DrawStartupGraphic: SetupStartupGraphic failed (missing console/background VTF?); skipping splash.\n" );
         return;
+	}
+
+    Msg( "DrawStartupGraphic: begin\n" );
 
     CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
 
@@ -809,6 +884,8 @@ void CVideoMode_Common::DrawStartupGraphic()
 	IMaterial *pTitleMaterial = g_pMaterialSystem->CreateMaterial( "__title", pVMTKeyValues );
 
 #endif // CSTRIKE15
+
+    Msg( "DrawStartupGraphic: materials created\n" );
 
     int w = GetModeWidth();
     int h = GetModeHeight();
@@ -871,6 +948,7 @@ void CVideoMode_Common::DrawStartupGraphic()
 	}
 	else
 	{
+		Msg( "DrawStartupGraphic: drawing\n" );
 		pRenderContext->Viewport( 0, 0, w, h );
 		pRenderContext->DepthRange( 0, 1 );
 		pRenderContext->ClearColor3ub( 0, 0, 0 );
@@ -918,12 +996,16 @@ void CVideoMode_Common::DrawStartupGraphic()
 		DrawScreenSpaceRectangle( pTitleMaterial, title_x, title_y, title_w, title_h, 0, 0, title_w-1, title_h-1, title_w, title_h, NULL,1,1,depth );
 #endif // CSTRIKE15
 
+		Msg( "DrawStartupGraphic: first draw done, swapping\n" );
 		g_pMaterialSystem->SwapBuffers();
 	}
 
 #if defined( DX_TO_GL_ABSTRACTION ) && !defined( _GAMECONSOLE )
+	Msg( "DrawStartupGraphic: shader preload\n" );
 	g_pMaterialSystem->DoStartupShaderPreloading();
 #endif
+
+	Msg( "DrawStartupGraphic: done\n" );
 
     pMaterial->Release();
     pLoadingMaterial->Release();
@@ -2417,6 +2499,12 @@ bool CVideoMode_MaterialSystem::SetMode( int nWidth, int nHeight, bool bWindowed
 		videoMode.width = nWidth;
 		videoMode.height = nHeight;
 	}
+
+#ifdef __ANDROID__
+	// one true mode: the native display size, landscape-oriented; this also
+	// collapses any later SetMode from configs or gameui down to native
+	GetAndroidNativeVideoModeSize( videoMode.width, videoMode.height );
+#endif
 
     // update current video state
     MaterialSystem_Config_t config = *g_pMaterialSystemConfig;

@@ -34,9 +34,9 @@ inline BaseModUI::CBaseModPanel * BasePanel() { return &BaseModUI::CBaseModPanel
 #include "vgui_controls/PHandle.h"
 #include "vgui_controls/MenuItem.h"
 #include "vgui_controls/MessageDialog.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 #include "utlvector.h"
-#include "tier1/commandbuffer.h"
+#include "tier1/CommandBuffer.h"
 #include "vgui_controls/footerpanel.h"
 
 #include "ixboxsystem.h"

@@ -257,6 +257,12 @@ bool CDlcManager::IsDlcUpdateFinished( bool bWaitForFinish )
 
 KeyValues * CDlcManager::GetDataInfo()
 {
+	if ( !m_pDataInfo )
+	{
+		m_pDataInfo = new KeyValues( "DlcManager" );
+		m_pDataInfo->SetUint64( "@info/installed", 0 );
+	}
+
 	return m_pDataInfo;
 }
 
@@ -291,13 +297,10 @@ void CDlcManager::Steam_OnDLCInstalled( DlcInstalled_t *pParam )
 
 	TitleDataFieldsDescription_t const *fields = g_pMatchFramework->GetMatchTitle()->DescribeTitleDataStorage();
 
+	GetDataInfo();
 	uint64 uiOldDlcMask = m_pDataInfo->GetUint64( "@info/installed" );
-	if ( !m_pDataInfo )
-	{
-		m_pDataInfo = new KeyValues( "DlcManager" );
-		m_pDataInfo->SetUint64( "@info/installed", 0 );
-	}
 	IPlayerLocal *pPlayerLocal = g_pMatchFramework->GetMatchSystem()->GetPlayerManager()->GetLocalPlayer( XBX_GetPrimaryUserId() );
+	ISteamApps *pSteamApps = steamapicontext ? steamapicontext->SteamApps() : NULL;
 	for ( ; dlcs->m_uiLicenseMaskId; ++ dlcs )
 	{
 		// Check if DLC already detected
@@ -315,7 +318,7 @@ void CDlcManager::Steam_OnDLCInstalled( DlcInstalled_t *pParam )
 		}
 
 		// Check Steam subscription
-		if ( steamapicontext->SteamApps()->BIsSubscribedApp( dlcs->m_idDlcAppId ) )
+		if ( pSteamApps && pSteamApps->BIsSubscribedApp( dlcs->m_idDlcAppId ) )
 		{
 			m_pDataInfo->SetUint64( "@info/installed", m_pDataInfo->GetUint64( "@info/installed" ) | dlcs->m_uiLicenseMaskId );
 
@@ -336,5 +339,3 @@ void CDlcManager::Steam_OnDLCInstalled( DlcInstalled_t *pParam )
 	}
 }
 #endif
-
-

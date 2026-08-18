@@ -6,7 +6,7 @@
 
 
 #include "cbase.h"
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include "engine/IEngineSound.h"
 #include "filesystem.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
@@ -464,7 +464,11 @@ bool C_SoundscapeSystem::Init()
 	}
 	else
 	{
+#ifdef ANDROID
+		Warning( "Unable to load manifest file '%s' (continuing without soundscapes)\n", SOUNDSCAPE_MANIFEST_FILE );
+#else
 		Error( "Unable to load manifest file '%s'\n", SOUNDSCAPE_MANIFEST_FILE );
+#endif
 	}
 
 	manifest->deleteThis();

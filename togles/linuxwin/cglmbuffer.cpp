@@ -430,7 +430,7 @@ void glBufferSubDataMaxSize( GLenum target, GLintptr offset, GLsizeiptr size, co
 }
 
 CGLMBuffer::CGLMBuffer( GLMContext *pCtx, EGLMBufferType type, uint size, uint options )
-{
+{ extern int g_nLiveBuf; g_nLiveBuf++; { extern long long g_nLiveBufBytes; g_nLiveBufBytes += (long long)size; static int s_nTrace = 0; if ( s_nTrace < 40 ) { s_nTrace++; printf( "BUFTRACE: size=%lld type=%d ra0=%p ra1=%p ra2=%p\n", (long long)size, (int)type, __builtin_return_address(0), __builtin_return_address(1), __builtin_return_address(2) ); } } { extern char g_lastBufKind[64]; const char *k = ( type == 0 ) ? "VB" : ( type == 1 ) ? "IB" : ( type == 2 ) ? "UB" : "PB"; int i=0; while ( k[i] ) { g_lastBufKind[i] = k[i]; i++; } g_lastBufKind[i] = 0; char tmp[16]; int n = snprintf( tmp, sizeof(tmp), " %d", (int)size ); int j=0; while ( tmp[j] && i < 48 ) { g_lastBufKind[i++] = tmp[j++]; } g_lastBufKind[i] = 0; }
 	m_pCtx = pCtx;
 	m_type = type;
 	
@@ -550,7 +550,7 @@ CGLMBuffer::CGLMBuffer( GLMContext *pCtx, EGLMBufferType type, uint size, uint o
 }
 
 CGLMBuffer::~CGLMBuffer( )
-{
+{ extern int g_nLiveBuf; g_nLiveBuf--; { extern long long g_nLiveBufBytes; g_nLiveBufBytes -= (long long)m_nSize; }
 	m_pCtx->CheckCurrent();
 	
 	if ( m_bPseudo )
@@ -852,6 +852,13 @@ void CGLMBuffer::Lock( GLMBuffLockParams *pParams, char **pAddressOut )
 #endif
 
 		mapPtr = (char*)gGL->glMapBufferRange( m_buffGLTarget, pParams->m_nOffset, pParams->m_nSize, parms);
+		if ( !mapPtr )
+		{
+			// A failed mapping otherwise surfaces as a null deref in whichever
+			// caller writes to the lock - name the failure here instead.
+			printf( "CGLMBuffer::Lock: glMapBufferRange FAILED (target=0x%x offset=%d size=%d parms=0x%x glErr=0x%x)\n",
+				(uint)m_buffGLTarget, (int)pParams->m_nOffset, (int)pParams->m_nSize, (uint)parms, (uint)gGL->glGetError() );
+		}
 
 #ifdef REPORT_LOCK_TIME
 		double flEnd = Plat_FloatTime();

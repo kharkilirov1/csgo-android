@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+import pathlib
+import unittest
+import xml.etree.ElementTree as ET
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[3]
+LAUNCHER = ROOT / "android" / "csgo-launcher"
+ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
+
+
+class LauncherIntegrationContractTest(unittest.TestCase):
+    def read(self, relative_path):
+        return (ROOT / relative_path).read_text(encoding="utf-8")
+
+    def test_manifest_splits_legacy_and_modern_storage_access(self):
+        manifest = ET.parse(LAUNCHER / "AndroidManifest.xml").getroot()
+        permissions = {
+            node.attrib[ANDROID_NS + "name"]: node
+            for node in manifest.findall("uses-permission")
+        }
+        self.assertIn("android.permission.MANAGE_EXTERNAL_STORAGE", permissions)
+        legacy = permissions["android.permission.WRITE_EXTERNAL_STORAGE"]
+        self.assertEqual("29", legacy.attrib[ANDROID_NS + "maxSdkVersion"])
+
+        features = {
+            node.attrib[ANDROID_NS + "name"]: node
+            for node in manifest.findall("uses-feature")
+            if ANDROID_NS + "name" in node.attrib
+        }
+        for optional_hardware in (
+            "android.hardware.microphone",
+            "android.hardware.touchscreen",
+            "android.hardware.wifi",
+        ):
+            self.assertEqual(
+                "false", features[optional_hardware].attrib[ANDROID_NS + "required"]
+            )
+
+        gles = next(
+            node
+            for node in manifest.findall("uses-feature")
+            if ANDROID_NS + "glEsVersion" in node.attrib
+        )
+        self.assertEqual("0x00030002", gles.attrib[ANDROID_NS + "glEsVersion"])
+        self.assertEqual("true", gles.attrib[ANDROID_NS + "required"])
+
+        application = manifest.find("application")
+        activities = {
+            node.attrib[ANDROID_NS + "name"]: node
+            for node in application.findall("activity")
+        }
+        self.assertEqual(
+            "false",
+            activities["me.nillerusr.LauncherActivity"].attrib[
+                ANDROID_NS + "hardwareAccelerated"
+            ],
+        )
+        self.assertNotIn(
+            ANDROID_NS + "hardwareAccelerated",
+            activities["org.libsdl.app.SDLActivity"].attrib,
+        )
+
+    def test_android_requests_the_gles_version_required_by_togles(self):
+        sdl_manager = self.read("appframework/sdlmgr.cpp")
+        init = sdl_manager[sdl_manager.index("InitReturnVal_t CSDLMgr::Init()") :]
+        init = init[: init.index("bool CSDLMgr::Connect")]
+
+        profile = (
+            "SET_GL_ATTR(SDL_GL_CONTEXT_PROFILE_MASK, "
+            "SDL_GL_CONTEXT_PROFILE_ES);"
+        )
+        major = "SET_GL_ATTR(SDL_GL_CONTEXT_MAJOR_VERSION, 3);"
+        minor = "SET_GL_ATTR(SDL_GL_CONTEXT_MINOR_VERSION, 2);"
+        for attribute in (profile, major, minor):
+            self.assertIn(attribute, init)
+            self.assertLess(init.index(attribute), init.index("CreateHiddenGameWindow"))
+
+    def test_android_sdl_manager_uses_the_togles_entrypoint_abi(self):
+        router = self.read("public/togl/rendermechanism.h")
+        sdl_manager = self.read("appframework/sdlmgr.cpp")
+
+        self.assertLess(router.index("#ifdef TOGLES"), router.index("#ifndef RENDERMECHANISM_H"))
+        self.assertIn('#include "togles/rendermechanism.h"', router)
+
+        togles_callback = (
+            "void *VoidFnPtrLookup_GlMgr( const char *fn, bool &okay, "
+            "const bool bRequired, void *fallback)"
+        )
+        desktop_callback = (
+            "void *VoidFnPtrLookup_GlMgr( const char *libname, const char *fn, "
+            "bool &okay, const bool bRequired, void *fallback)"
+        )
+        self.assertIn("#if defined( TOGLES )\n" + togles_callback, sdl_manager)
+        self.assertIn("#else\n" + desktop_callback, sdl_manager)
+        self.assertIn("gGL->glGenFramebuffers(1, &m_readFBO);", sdl_manager)
+        self.assertIn("gGL->glDeleteFramebuffers(1, &m_readFBO);", sdl_manager)
+
+    def test_togles_core_entrypoints_match_gles_3_2(self):
+        entrypoints = self.read("public/togles/linuxwin/glfuncs.h")
+
+        for unsupported_entrypoint in (
+            "GL_FUNC_VOID(OpenGL,true,glAlphaFunc,",
+            "GL_FUNC_VOID(OpenGL,true,glClientActiveTexture,",
+            "GL_FUNC_VOID(OpenGL,true,glColor4f,",
+            "GL_FUNC_VOID(OpenGL,false,glFramebufferTexture3D,",
+            "GL_FUNC_VOID(OpenGL,false,glAlphaFuncQCOM,",
+        ):
+            self.assertNotIn(unsupported_entrypoint, entrypoints)
+
+        self.assertIn(
+            "GL_FUNC_VOID(GL_QCOM_alpha_test,false,glAlphaFuncQCOM,",
+            entrypoints,
+        )
+
+    def test_togles_accepts_legacy_sampler_state_calls(self):
+        dxabstract = " ".join(
+            self.read("public/togles/linuxwin/dxabstract.h").split()
+        )
+        self.assertIn(
+            "DWORD MipFilter, DWORD MinLod = 0, float LodBias = 0.0f",
+            dxabstract,
+        )
+
+    def test_selected_path_crosses_java_jni_and_filesystem_boundaries(self):
+        activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")
+        bridge = self.read("android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java")
+        native = self.read("launcher/android/main.cpp")
+        filesystem = self.read("public/filesystem_init.cpp")
+
+        self.assertIn("ValveActivity2.EXTRA_GAME_PATH", activity)
+        self.assertIn('setenv("VALVE_GAME_PATH", gameRoot, 1)', bridge)
+        self.assertIn('getenv( "VALVE_GAME_PATH" )', native)
+        self.assertIn('A( "-basedir", gamePath )', native)
+        self.assertIn("chdir( gamePath )", native)
+        self.assertIn('getenv( "VALVE_GAME_PATH" )', filesystem)
+
+    def test_environment_and_bundled_vpk_have_native_consumers(self):
+        bridge = self.read("android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java")
+        extractor = self.read("android/csgo-launcher/src/me/nillerusr/ExtractAssets.java")
+        sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
+        launcher = self.read("launcher/launcher.cpp")
+
+        self.assertIn("LauncherEnvironment.parse(specification)", bridge)
+        self.assertIn('setenv("EXTRAS_VPK_PATH", joinedVPKs, 1)', bridge)
+        self.assertIn(
+            "#if defined( SUPPORT_VPK ) || defined( __ANDROID__ )", launcher
+        )
+        self.assertIn('getenv( "EXTRAS_VPK_PATH" )', launcher)
+        self.assertIn("AddVPKFile( vpkPaths[i], PATH_ADD_TO_HEAD )", launcher)
+        self.assertIn("isValidVPK(File file)", extractor)
+        self.assertIn("prepareBundledExtras(context, intent)", bridge)
+        self.assertIn("if (!ValveActivity2.initNatives(this, intent))", sdl)
+        self.assertIn("showStartupError(ValveActivity2.getStartupErrorResource", sdl)
+
+        bundled_vpk = (LAUNCHER / "assets" / "extras_dir.vpk").read_bytes()
+        self.assertGreater(len(bundled_vpk), 4)
+        self.assertEqual(b"\x34\x12\xaa\x55", bundled_vpk[:4])
+
+    def test_sdl_activity_no_longer_blocks_on_obsolete_storage_permission(self):
+        sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
+        on_create = sdl[sdl.index("protected void onCreate(Bundle savedInstanceState)"):]
+        on_create = on_create[:on_create.index("protected void pauseNativeThread")]
+        self.assertIn("init();", on_create)
+        self.assertNotIn("WRITE_EXTERNAL_STORAGE", on_create)
+
+    def test_large_asset_preflight_runs_before_sdl_activity_on_a_worker(self):
+        activity = self.read("android/csgo-launcher/src/me/nillerusr/LauncherActivity.java")
+        launch = activity[activity.index("private void startSourceWithAccess()") :]
+        launch = launch[: launch.index("@Override\n\tprotected void onResume")]
+
+        worker = launch.index('new Thread(new Runnable()')
+        preflight = launch.index("ValveActivity2.preInit(")
+        start = launch.index("startActivity(intent)")
+        self.assertLess(worker, preflight)
+        self.assertLess(preflight, start)
+        self.assertIn('"PrepareGameResources"', launch)
+        self.assertIn("launchButton.setEnabled(false)", launch)
+        callback = launch[launch.index("runOnUiThread(new Runnable()") :]
+        self.assertLess(callback.index("isFinishing()"), callback.index("launchButton.setEnabled(true)"))
+        self.assertIn("if (!launcherResumed)", callback)
+
+        extractor = self.read("android/csgo-launcher/src/me/nillerusr/ExtractAssets.java")
+        self.assertIn("public static synchronized File extractVPK", extractor)
+
+    def test_launcher_fails_closed_on_incomplete_external_weapon_content(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        preflight = bridge[bridge.index("public static boolean preInit(") :]
+        preflight = preflight[: preflight.index("public static int getStartupErrorResource")]
+
+        validation = "GameContentValidator.validate(modDirectory)"
+        self.assertIn(validation, preflight)
+        self.assertIn("if (!contentResult.isValid())", preflight)
+        self.assertIn("contentResult.getDiagnostic()", preflight)
+        self.assertIn(
+            "R.string.srceng_launcher_error_missing_weapon_content", preflight
+        )
+        self.assertLess(
+            preflight.index(validation), preflight.index("prepareBundledExtras(context, intent)")
+        )
+
+        strings = ET.parse(LAUNCHER / "res" / "values" / "strings.xml").getroot()
+        message = next(
+            node.text
+            for node in strings.findall("string")
+            if node.attrib.get("name")
+            == "srceng_launcher_error_missing_weapon_content"
+        )
+        self.assertIn("scripts/weapon_manifest.txt", message)
+        self.assertIn("weapon_healthshot", message)
+        self.assertIn("does not include CS:GO game data", message)
+        self.assertIn("plaintext", message)
+        self.assertNotIn(".ctx", message)
+        for localized in (
+            "res/values-ru/string.xml",
+            "res/values-zh-rCN/strings.xml",
+            "res/values-zh-rTW/strings.xml",
+        ):
+            localized_root = ET.parse(LAUNCHER / localized).getroot()
+            localized_message = next(
+                node.text
+                for node in localized_root.findall("string")
+                if node.attrib.get("name")
+                == "srceng_launcher_error_missing_weapon_content"
+            )
+            self.assertNotIn(".ctx", localized_message)
+
+    def test_content_preflight_cache_keeps_full_scan_off_sdl_ui_thread(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        preflight = bridge[bridge.index("public static boolean preInit(") :]
+        preflight = preflight[: preflight.index("public static int getStartupErrorResource")]
+
+        cache_lookup = "GameContentValidator.findPreparedValidation("
+        main_thread = "Looper.myLooper() == Looper.getMainLooper()"
+        full_scan = "GameContentValidator.validate(modDirectory)"
+        cache_store = "GameContentValidator.rememberSuccessfulValidation("
+        self.assertIn("EXTRA_CONTENT_VALIDATION_TOKEN", preflight)
+        self.assertIn(cache_lookup, preflight)
+        self.assertIn(main_thread, preflight)
+        self.assertIn(full_scan, preflight)
+        self.assertIn(cache_store, preflight)
+        self.assertLess(preflight.index(cache_lookup), preflight.index(main_thread))
+        self.assertLess(preflight.index(main_thread), preflight.index(full_scan))
+        self.assertLess(preflight.index(full_scan), preflight.index(cache_store))
+
+        manifest = ET.parse(LAUNCHER / "AndroidManifest.xml").getroot()
+        activities = {
+            node.attrib[ANDROID_NS + "name"]: node
+            for node in manifest.findall("./application/activity")
+        }
+        self.assertEqual(
+            "false",
+            activities["org.libsdl.app.SDLActivity"].attrib[ANDROID_NS + "exported"],
+        )
+
+    def test_native_overlay_preflight_has_a_specific_localized_error(self):
+        bridge = self.read(
+            "android/csgo-launcher/src/com/valvesoftware/ValveActivity2.java"
+        )
+        self.assertIn("UNSUPPORTED_AUTOMATIC_OVERLAY", bridge)
+        self.assertIn("srceng_launcher_error_unsupported_content_overlay", bridge)
+
+        localized_files = (
+            "res/values/strings.xml",
+            "res/values-ru/string.xml",
+            "res/values-zh-rCN/strings.xml",
+            "res/values-zh-rTW/strings.xml",
+        )
+        for localized in localized_files:
+            root = ET.parse(LAUNCHER / localized).getroot()
+            message = next(
+                (node.text or "")
+                for node in root.findall("string")
+                if node.attrib.get("name")
+                == "srceng_launcher_error_unsupported_content_overlay"
+            )
+            self.assertIn("xlsppatch", message)
+            self.assertIn("update", message)
+            self.assertIn("csgo_dlc", message)
+
+    def test_sdl_shutdown_wait_is_bounded_and_fails_closed(self):
+        sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
+        destroy = sdl[sdl.index("protected void onDestroy()") :]
+        destroy = destroy[: destroy.index("public void onBackPressed()")]
+
+        self.assertIn("final Thread sdlThread = SDLActivity.mSDLThread", destroy)
+        self.assertIn("sdlThread.join(2000)", destroy)
+        self.assertNotIn("mSDLThread.join();", destroy)
+        self.assertIn("sdlThread.isAlive()", destroy)
+        self.assertIn("android.os.Process.killProcess", destroy)
+        self.assertLess(destroy.index("sdlThread.isAlive()"), destroy.index("nativeQuit()"))
+
+    def test_sdl_runtime_permission_result_reaches_native_waiter(self):
+        sdl = self.read("android/csgo-launcher/src/org/libsdl/app/SDLActivity.java")
+        callback = sdl[sdl.index("public void onRequestPermissionsResult("):]
+        callback = callback[:callback.index("public static int openURL")]
+
+        self.assertIn("super.onRequestPermissionsResult", callback)
+        self.assertIn("grantResults.length > 0", callback)
+        self.assertIn("PackageManager.PERMISSION_GRANTED", callback)
+        self.assertIn("SDLActivity.nativePermissionResult(requestCode, granted)", callback)
+
+    def test_android_modules_load_only_from_the_apk_native_directory(self):
+        loader = self.read("tier1/interface.cpp")
+        android_branch = loader[loader.index("#if defined( __ANDROID__ )"):]
+        android_branch = android_branch[:android_branch.index("#else")]
+
+        self.assertIn('getenv( "APP_LIB_PATH" )', android_branch)
+        self.assertIn("V_FileBase( pModuleName", android_branch)
+        self.assertIn('"lib%s%s"', android_branch)
+        self.assertIn("Sys_LoadLibraryGuts( absoluteModuleName )", android_branch)
+        self.assertNotIn("Sys_LoadLibraryGuts( pModuleName )", android_branch)
+
+
+if __name__ == "__main__":
+    unittest.main()

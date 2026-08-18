@@ -13,7 +13,7 @@
 #include "vgui/IScheme.h"
 #include "vgui/ISurface.h"
 #include "vgui/IPanel.h"
-#include "keyvalues.h"
+#include "KeyValues.h"
 
 #include "vgui_controls/Button.h"
 #include "vgui_controls/ComboBox.h"

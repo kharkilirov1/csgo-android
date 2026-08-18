@@ -11,6 +11,8 @@
     <string name="srceng_launcher_error_missing_obb_b">檔案。請檢查該路徑的檔案是否完整：</string>
     <string name="srceng_launcher_error_test_write">測試寫入失敗，所有檔案將儲存到：</string>
     <string name="srceng_launcher_error_no_permission">遊戲需要足夠的許可權才能執行。</string>
+    <string name="srceng_launcher_error_missing_weapon_content">CS:GO 遊戲檔案不完整。本應用程式不包含 CS:GO 遊戲資料。請選擇合法取得的 CS:GO 1.36.0.2 內容資料夾，其中應包含 scripts/weapon_manifest.txt 及其列出的所有明文 .txt 武器腳本，包括 scripts/weapon_healthshot.txt。</string>
+    <string name="srceng_launcher_error_unsupported_content_overlay">暫不支援自動 CS:GO 內容覆蓋層。啟動前請移除或合併同層的 xlsppatch、update 或啟用中的 csgo_dlc* 資料夾。</string>
 
     <string name="srceng_launcher_command_args">命令列參數</string>
     <string name="srceng_launcher_env">執行環境</string>

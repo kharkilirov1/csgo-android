@@ -12,8 +12,8 @@
 #include "gameconsoledialog.h"
 #include "vgui/ISurface.h"
 
-#include "keyvalues.h"
-#include "vgui/vgui.h"
+#include "KeyValues.h"
+#include "vgui/VGUI.h"
 #include "vgui/IVGui.h"
 #include "vgui_controls/Panel.h"
 #include "convar.h"

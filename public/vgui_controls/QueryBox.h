@@ -12,7 +12,7 @@
 #pragma once
 #endif
 
-#include <keyvalues.h>
+#include <KeyValues.h>
 #include <vgui_controls/MessageBox.h>
 #include <vgui_controls/Button.h>
 

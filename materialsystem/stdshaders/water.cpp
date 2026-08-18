@@ -16,7 +16,7 @@ ConVar r_buildingmapforworld( "r_buildingmapforworld", "0" );
 #include "WaterCheap_ps20.inc"
 #include "WaterCheap_ps20b.inc"
 #include "Water_vs20.inc"
-#include "water_ps20.inc"
+#include "Water_ps20.inc"
 #include "water_ps20b.inc"
 #include "shaderlib/commandbuilder.h"
 

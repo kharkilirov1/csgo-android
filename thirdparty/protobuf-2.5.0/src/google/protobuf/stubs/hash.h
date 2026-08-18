@@ -39,7 +39,7 @@
 #include <google/protobuf/stubs/common.h>
 #include "config.h"
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__linux__)
 #undef HAVE_HASH_MAP
 #undef HAVE_HASH_SET
 #endif

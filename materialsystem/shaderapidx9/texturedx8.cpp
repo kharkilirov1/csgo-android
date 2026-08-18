@@ -480,7 +480,8 @@ bool LockTexture( ShaderAPITextureHandle_t bindId, int copy, IDirect3DBaseTextur
 	hr = pSurf->LockRect( &s_LockedRect, &s_LockedSrcRect, flags );
 	pSurf->Release();
 
-	if ( FAILED( hr ) )
+	// togles returns S_OK from LockRect even when the mapping failed
+	if ( FAILED( hr ) || !s_LockedRect.pBits )
 		return false;
 
 	writer.SetPixelMemory( GetImageFormat(pTexture), s_LockedRect.pBits, s_LockedRect.Pitch );
@@ -618,6 +619,13 @@ static void BlitSurfaceBits( TextureLoadInfo_t &info, int xOffset, int yOffset, 
 
 	ImageFormat dstFormat = GetImageFormat( info.m_pTexture );
 	unsigned char *pImage = (unsigned char *)lockedRect.pBits;
+	if ( !pImage )
+	{
+		// togles returns S_OK from LockRect even when the mapping failed
+		Warning( "CShaderAPIDX8::BlitTextureBits: lock returned no bits\n" );
+		pTextureLevel->Release();
+		return;
+	}
 	// garymcthack : need to make a recording command for this.
 	ShaderUtil()->ConvertImageFormat( info.m_pSrcData, info.m_SrcFormat,
 						pImage, dstFormat, info.m_nWidth, info.m_nHeight, srcStride, lockedRect.Pitch );

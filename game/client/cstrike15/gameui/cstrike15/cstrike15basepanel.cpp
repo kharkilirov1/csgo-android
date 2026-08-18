@@ -442,8 +442,11 @@ void CCStrike15BasePanel::OnOpenCreateMainMenuScreen( void )
 
 void CCStrike15BasePanel::DismissMainMenuScreen( void )
 {
-	// Allow the dismiss to proceed even if IsScaleformMainMenuEnabled is false, in case we toggle it at run-time
+	// Always unload a previously-created movie in case the menu mode was
+	// toggled at runtime, then hide the native fallback when Scaleform is off.
 	CCreateMainMenuScreenScaleform::UnloadDialog( );
+	if ( !IsScaleformMainMenuEnabled() )
+		CBaseModPanel::DismissMainMenuScreen();
 }
 
 void CCStrike15BasePanel::DismissAllMainMenuScreens( bool bHideMainMenuOnly )
@@ -499,6 +502,10 @@ void CCStrike15BasePanel::RestoreMainMenuScreen( void )
 	else if ( IsScaleformMainMenuEnabled() )
 	{
 		CCreateMainMenuScreenScaleform::RestorePanel();
+	}
+	else
+	{
+		CBaseModPanel::RestoreMainMenuScreen();
 	}
 }
 
@@ -823,12 +830,14 @@ void CCStrike15BasePanel::OnOpenHowToPlayDialog( void )
 
 void CCStrike15BasePanel::DismissPauseMenu( void )
 {
-	/* Removed for partner depot */
+	if ( !IsScaleformPauseMenuEnabled() )
+		CBaseModPanel::DismissPauseMenu();
 }
 
 void CCStrike15BasePanel::RestorePauseMenu( void )
 {
-	/* Removed for partner depot */
+	if ( !IsScaleformPauseMenuEnabled() )
+		CBaseModPanel::RestorePauseMenu();
 }
 
 void CCStrike15BasePanel::ShowScaleformPauseMenu( bool bShow )
@@ -849,7 +858,15 @@ bool CCStrike15BasePanel::IsScaleformPauseMenuVisible( void )
 }
 
 void CCStrike15BasePanel::OnOpenDisconnectConfirmationDialog( void )
-{	
+{
+	if ( !IsScaleformPauseMenuEnabled() )
+	{
+		// The non-console VGUI base has no safe CS:GO confirmation dialog;
+		// disconnect directly rather than opening the no-op Scaleform box.
+		RunMenuCommand( "DisconnectNoConfirm" );
+		return;
+	}
+
 #if defined( INCLUDE_SCALEFORM )
 	char const *szTitle = "#SFUI_PauseMenu_ExitGameConfirmation_Title";
 	char const *szMessageDefault = "#SFUI_PauseMenu_ExitGameConfirmation_Message";
@@ -921,7 +938,13 @@ void CCStrike15BasePanel::OnOpenDisconnectConfirmationDialog( void )
 }
 
 void CCStrike15BasePanel::OnOpenQuitConfirmationDialog( bool bForceToDesktop )
-{	
+{
+	if ( !IsScaleformMainMenuEnabled() )
+	{
+		CBaseModPanel::OnOpenQuitConfirmationDialog( bForceToDesktop );
+		return;
+	}
+
 #if defined( INCLUDE_SCALEFORM )
 	m_bForceQuitToDesktopOnDisconnect = bForceToDesktop;
 	OnOpenMessageBox( "#SFUI_MainMenu_ExitGameConfirmation_Title", "#SFUI_MainMenu_ExitGameConfirmation_Message", "#SFUI_MainMenu_ExitGameConfirmation_Navigation", ( MESSAGEBOX_FLAG_OK  |  MESSAGEBOX_FLAG_CANCEL | MESSAGEBOX_FLAG_BOX_CLOSED ), this );
@@ -1257,7 +1280,8 @@ void CCStrike15BasePanel::RunFrame( void )
 			ePos = k_EPositionBottomLeft;
 		else if ( !V_stricmp( ui_steam_overlay_notification_position.GetString(), "topleft" ) )
 			ePos = k_EPositionTopLeft;
-		steamapicontext->SteamUtils()->SetOverlayNotificationPosition( ePos );
+		if ( steamapicontext && steamapicontext->SteamUtils() )
+			steamapicontext->SteamUtils()->SetOverlayNotificationPosition( ePos );
 	}
 #endif
 
@@ -1360,6 +1384,13 @@ void CCStrike15BasePanel::UnlockInput( void )
 void CCStrike15BasePanel::CheckIntroMovieStaticDependencies( void )
 {
     m_bTestedStaticIntroMovieDependencies = true;
+
+#if defined( __ANDROID__ )
+	// The Android Scaleform implementation is a no-op stub, so an intro movie
+	// can never become visible or signal completion.
+	m_bNeedToStartIntroMovie = false;
+	return;
+#endif
 
 #if defined( _X360 )
 	if ( ( XboxLaunch()->GetLaunchFlags() & LF_WARMRESTART ) )

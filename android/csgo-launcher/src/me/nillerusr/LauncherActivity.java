@@ -31,6 +31,7 @@ import android.widget.*;
 import android.graphics.*;
 import android.graphics.drawable.*;
 import android.net.Uri;
+import android.provider.Settings;
 
 import me.nillerusr.UpdateService;
 import me.nillerusr.UpdateSystem;
@@ -38,9 +39,14 @@ import me.nillerusr.ExtractAssets;
 import me.nillerusr.DirchActivity;
 
 import org.libsdl.app.SDLActivity;
+import com.valvesoftware.LauncherEnvironment;
+import com.valvesoftware.LauncherPaths;
+import com.valvesoftware.ValveActivity2;
 
 public class LauncherActivity extends Activity {
 	public static String PKG_NAME;
+	private static final String PREF_PRODUCTION_ARGS_MIGRATED =
+		"production_args_migrated_v1";
 
 	public static boolean can_write = true;
 	static EditText cmdArgs, GamePath = null, EnvEdit, res_width, res_height;
@@ -49,6 +55,14 @@ public class LauncherActivity extends Activity {
 	static CheckBox useVolumeButtons, check_updates;
 
 	final static int REQUEST_PERMISSIONS = 42;
+	final static int PENDING_NONE = 0;
+	final static int PENDING_DIRECTORY = 1;
+	final static int PENDING_LAUNCH = 2;
+	private int pendingStorageAction = PENDING_NONE;
+	private boolean waitingForAllFilesAccess = false;
+	private boolean launchPreparationInProgress = false;
+	private boolean launcherResumed = false;
+	private Button launchButton;
 
 	public void applyPermissions( final String permissions[], final int code ) {
 		List<String> requestPermissions = new ArrayList<String>();
@@ -65,20 +79,86 @@ public class LauncherActivity extends Activity {
 		}
 	}
 
-	public void onRequestPermissionsResult( int requestCode,  String[] permissions,  int[] grantResults ) {
+	@Override
+	public void onRequestPermissionsResult( int requestCode, String[] permissions, int[] grantResults ) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		if( requestCode == REQUEST_PERMISSIONS ) {
-			if( grantResults[0] == PackageManager.PERMISSION_DENIED ) {
-				Toast.makeText( this, R.string.srceng_launcher_error_no_permission, Toast.LENGTH_LONG ).show();
-				finish();
+			if (pendingStorageAction != PENDING_NONE) {
+				if (hasGameFilesAccess())
+					performPendingStorageAction();
+				else
+					Toast.makeText(this, R.string.srceng_launcher_storage_access_denied, Toast.LENGTH_LONG).show();
 			}
+		}
+	}
+
+	private boolean hasGameFilesAccess() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+			return Environment.isExternalStorageManager();
+		return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+	}
+
+	private void requestAllFilesAccess() {
+		waitingForAllFilesAccess = true;
+		try {
+			Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+			intent.setData(Uri.parse("package:" + getPackageName()));
+			startActivity(intent);
+		} catch (Exception ignored) {
+			startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+		}
+	}
+
+	private void requestStorageAction(int action) {
+		if (hasGameFilesAccess()) {
+			pendingStorageAction = action;
+			performPendingStorageAction();
+			return;
+		}
+
+		pendingStorageAction = action;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			new AlertDialog.Builder(this)
+				.setTitle(R.string.srceng_launcher_storage_access_title)
+				.setMessage(R.string.srceng_launcher_storage_access_message)
+				.setPositiveButton(R.string.srceng_launcher_storage_access_grant,
+					new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							requestAllFilesAccess();
+						}
+					})
+				.setNegativeButton(android.R.string.cancel,
+					new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							pendingStorageAction = PENDING_NONE;
+						}
+					})
+				.setCancelable(false)
+				.show();
+		} else {
+			applyPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, REQUEST_PERMISSIONS);
+		}
+	}
+
+	private void performPendingStorageAction() {
+		int action = pendingStorageAction;
+		pendingStorageAction = PENDING_NONE;
+		if (action == PENDING_DIRECTORY) {
+			Intent intent = new Intent(LauncherActivity.this, DirchActivity.class);
+			intent.addFlags(268435456);
+			startActivity(intent);
+		} else if (action == PENDING_LAUNCH) {
+			startSourceWithAccess();
 		}
 	}
 
 	public static String getDefaultDir() {
 		File dir = Environment.getExternalStorageDirectory();
 		if (dir == null || !dir.exists())
-			return "/sdcard/";
-		return dir.getPath();
+			return "/sdcard";
+		return LauncherPaths.normalizeSelectedPath(dir.getPath());
 	}
 
 	public static String getAndroidDataDir() {
@@ -133,6 +213,20 @@ public class LauncherActivity extends Activity {
 	}
 
 
+	private String loadCommandArguments() {
+		String arguments = mPref.getString("argv", "");
+		if (!mPref.getBoolean(PREF_PRODUCTION_ARGS_MIGRATED, false)) {
+			SharedPreferences.Editor editor = mPref.edit();
+			if ("-console".equals(arguments.trim())) {
+				arguments = "";
+				editor.putString("argv", arguments);
+			}
+			editor.putBoolean(PREF_PRODUCTION_ARGS_MIGRATED, true);
+			editor.apply();
+		}
+		return arguments;
+	}
+
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		PKG_NAME = getApplication().getPackageName();
@@ -165,8 +259,8 @@ public class LauncherActivity extends Activity {
 			}
 		});*/
 
-		Button button = (Button)findViewById(R.id.button_launch);
-		button.setOnClickListener(new View.OnClickListener() {
+		launchButton = (Button)findViewById(R.id.button_launch);
+		launchButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				LauncherActivity.this.startSource(v);
 			}
@@ -194,9 +288,7 @@ public class LauncherActivity extends Activity {
 		Button dirButton = findViewById(R.id.button_gamedir);
 		dirButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				Intent intent = new Intent(LauncherActivity.this, DirchActivity.class);
-				intent.addFlags(268435456);
-				startActivity(intent);
+				requestStorageAction(PENDING_DIRECTORY);
 			}
 		});
 
@@ -207,8 +299,9 @@ public class LauncherActivity extends Activity {
 //		check_updates = (CheckBox)findViewById(R.id.checkbox_check_updates);
 		String last_commit = getResources().getString(R.string.last_commit);
 
-		cmdArgs.setText(mPref.getString("argv", "-console"));
-		GamePath.setText(mPref.getString("gamepath", getDefaultDir() + "/srceng"));
+		cmdArgs.setText(loadCommandArguments());
+		GamePath.setText(LauncherPaths.normalizeSelectedPath(
+			mPref.getString("gamepath", getDefaultDir() + "/srceng")));
 		EnvEdit.setText(mPref.getString("env", "LIBGL_USEVBO=0"));
 
 //		useVolumeButtons.setChecked(mPref.getBoolean("use_volume_buttons", false));
@@ -216,9 +309,15 @@ public class LauncherActivity extends Activity {
 
 		changeButtonsStyle((ViewGroup)this.getWindow().getDecorView());
 
-		// permissions check
-		if( sdk >= 23 )
-			applyPermissions( new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO }, REQUEST_PERMISSIONS );
+		// WRITE_EXTERNAL_STORAGE is a runtime permission only through Android 10.
+		// Android 11+ direct-path access is requested lazily when the user picks
+		// or launches a game so the launcher itself remains usable.
+		if (sdk >= 23) {
+			if (sdk <= Build.VERSION_CODES.Q)
+				applyPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO }, REQUEST_PERMISSIONS);
+			else
+				applyPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, REQUEST_PERMISSIONS);
+		}
 /*
 		if( last_commit == null || last_commit.isEmpty() )
 			check_updates.setVisibility(View.GONE);
@@ -232,7 +331,7 @@ public class LauncherActivity extends Activity {
 	public void saveSettings(SharedPreferences.Editor editor)
 	{
 		String argv = cmdArgs.getText().toString();
-		String gamepath = GamePath.getText().toString();
+		String gamepath = LauncherPaths.normalizeSelectedPath(GamePath.getText().toString());
 		String env = EnvEdit.getText().toString();
 
 		editor.putString("argv", argv);
@@ -245,7 +344,25 @@ public class LauncherActivity extends Activity {
 
 	public void startSource(View view)
 	{
-		String gamepath = GamePath.getText().toString();
+		try {
+			LauncherEnvironment.parse(EnvEdit.getText().toString());
+		} catch (IllegalArgumentException error) {
+			Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
+			return;
+		}
+
+		saveSettings(mPref.edit());
+		requestStorageAction(PENDING_LAUNCH);
+	}
+
+	private void startSourceWithAccess()
+	{
+		if (launchPreparationInProgress)
+			return;
+
+		final String gamepath = LauncherPaths.normalizeSelectedPath(GamePath.getText().toString());
+		final String argv = cmdArgs.getText().toString();
+		final String environment = EnvEdit.getText().toString();
 
 		SharedPreferences.Editor editor = mPref.edit();
 		saveSettings(editor);
@@ -260,9 +377,64 @@ public class LauncherActivity extends Activity {
 
 		editor.commit();
 
-		Intent intent = new Intent(LauncherActivity.this, SDLActivity.class);
+		final Intent intent = new Intent(LauncherActivity.this, SDLActivity.class);
+		intent.putExtra(ValveActivity2.EXTRA_GAME_PATH, gamepath);
+		intent.putExtra(ValveActivity2.EXTRA_ARGS, argv);
+		intent.putExtra(ValveActivity2.EXTRA_ENV, environment);
 		intent.addFlags(268435456);
-		startActivity(intent);
+
+		// The bundled extras VPK is about 25 MiB.  Extracting and fsyncing it
+		// from SDLActivity.onCreate used to block Android's UI thread before a
+		// surface was even visible, which could trigger a first-launch ANR.
+		launchPreparationInProgress = true;
+		launchButton.setEnabled(false);
+		launchButton.setText(R.string.srceng_launcher_preparing);
+
+		Thread preparationThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				boolean prepared = false;
+				try {
+					prepared = ValveActivity2.preInit(
+						LauncherActivity.this.getApplicationContext(), intent);
+				} catch (Exception error) {
+					Log.e("SRCAPK", "Game preflight failed", error);
+				}
+
+				final boolean ready = prepared;
+				final int errorResource = ValveActivity2.getStartupErrorResource(intent);
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						if (isFinishing() ||
+							(Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()))
+							return;
+
+						launchPreparationInProgress = false;
+						launchButton.setEnabled(true);
+						launchButton.setText(R.string.srceng_launcher_launch);
+
+						// Do not unexpectedly open the game after the user has put the
+						// launcher in the background.  A later tap is cheap because the
+						// prepared VPK is already installed.
+						if (!launcherResumed)
+							return;
+
+						if (!ready) {
+							new AlertDialog.Builder(LauncherActivity.this)
+								.setTitle(R.string.srceng_launcher_error)
+								.setMessage(errorResource)
+								.setPositiveButton(R.string.srceng_launcher_ok, null)
+								.show();
+							return;
+						}
+
+						startActivity(intent);
+					}
+				});
+			}
+		}, "PrepareGameResources");
+		preparationThread.start();
 
 
 /*		if (can_write || rodir) {
@@ -295,11 +467,26 @@ public class LauncherActivity extends Activity {
 */
 	}
 
+	@Override
+	protected void onResume()
+	{
+		super.onResume();
+		launcherResumed = true;
+		if (!waitingForAllFilesAccess)
+			return;
+
+		waitingForAllFilesAccess = false;
+		if (hasGameFilesAccess())
+			performPendingStorageAction();
+		else
+			Toast.makeText(this, R.string.srceng_launcher_storage_access_denied, Toast.LENGTH_LONG).show();
+	}
+
 	public void onPause()
 	{
 		Log.v("SRCAPK", "onPause");
+		launcherResumed = false;
 		saveSettings(mPref.edit());
 		super.onPause();
 	}
 }
-

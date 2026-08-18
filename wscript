@@ -74,6 +74,7 @@ projects={
 		'materialsystem/shaderlib',
 		'materialsystem/stdshaders',
 		'mathlib',
+		'matchmaking',
 			'particles',
 			'raytrace',
 			'resourcefile',
@@ -91,6 +92,8 @@ projects={
 			'thirdparty/libjpeg',
 			'videocfg',
 		'localize',
+		'scaleformui',
+		'vscript',
 		'vgui2/matsys_controls',
 		'vgui2/src',
 		'vgui2/vgui_controls',
@@ -407,7 +410,11 @@ def check_deps(conf):
 				conf.check_cfg(package='libedit', uselib_store='EDIT', args=['--cflags', '--libs'])
 			else:
 				conf.check_pkg('freetype2', 'FT2', FT2_CHECK)
-				conf.check_pkg('fontconfig', 'FC', FC_CHECK)
+				# Android has no fontconfig; CLinuxFont enumerates the font
+				# directories directly there. Requiring it would only find the
+				# host's copy, which can't link into the target anyway.
+				if conf.env.DEST_OS != 'android':
+					conf.check_pkg('fontconfig', 'FC', FC_CHECK)
 				if conf.env.DEST_OS == "darwin":
 					conf.env.FRAMEWORK_OPENAL = "OpenAL"
 				else:
@@ -462,7 +469,20 @@ def configure(conf):
 
 	if sys.platform == 'win32':
 		conf.load('msvc_pdb_ext msdev msvs msvcdeps')
-	conf.load('subproject xcompile compiler_c compiler_cxx gccdeps gitversion clang_compilation_database strip_on_install_v2 waf_unit_test enforce_pic')
+	conf.load('subproject xcompile')
+	if conf.env.DEST_OS == 'android' or conf.options.ANDROID_OPTS:
+		if sys.platform == 'win32':
+			# xcompile has put the NDK clang into conf.environ, but waf's
+			# win32 compiler_cxx would still probe MSVC first (using the
+			# clang binary with MSVC flags -> fail). Publish the compiler
+			# into conf.env so find_cxx/cc skip the probe.
+			conf.env.COMPILER_CC = 'clang'
+			conf.env.COMPILER_CXX = 'clang'
+			if conf.environ.get('CC'):
+				conf.env.CC = conf.environ['CC'].split()
+			if conf.environ.get('CXX'):
+				conf.env.CXX = conf.environ['CXX'].split()
+	conf.load('compiler_c compiler_cxx gccdeps gitversion clang_compilation_database strip_on_install_v2 waf_unit_test enforce_pic')
 	if conf.env.DEST_OS == 'win32' and conf.env.DEST_CPU == 'amd64':
 		conf.load('masm')
 	elif conf.env.DEST_OS == 'darwin':

@@ -699,7 +699,7 @@ MAX_RELEASE_CHECK_RATE   default: 255 unless not HAVE_MMAP
   system version and #define HAVE_USR_INCLUDE_MALLOC_H.
 */
 
-#if defined( __ANDROID__ )
+#if defined( __ANDROID__ ) || defined( __linux__ )
 #define HAVE_USR_INCLUDE_MALLOC_H
 #endif
 

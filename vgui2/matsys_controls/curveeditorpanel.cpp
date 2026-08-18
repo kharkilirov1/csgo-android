@@ -6,7 +6,7 @@
 
 #include "matsys_controls/curveeditorpanel.h"
 #include "matsys_controls/matsyscontrols.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 #include "vgui/ISurface.h"
 #include "vgui/IInput.h"
 #include "vgui/MouseCode.h"

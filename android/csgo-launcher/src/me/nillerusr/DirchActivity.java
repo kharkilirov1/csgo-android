@@ -15,6 +15,8 @@ import android.text.util.Linkify;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
+
+import com.valvesoftware.LauncherPaths;
 import java.io.File;
 import java.io.FileFilter;
 import java.util.ArrayList;
@@ -144,10 +146,11 @@ public class DirchActivity extends Activity implements OnTouchListener{
 		button.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				if( cur_dir != null ) {
+					String selectedDirectory = LauncherPaths.normalizeSelectedPath(cur_dir);
 					if( LauncherActivity.GamePath != null )
-						LauncherActivity.GamePath.setText(cur_dir+"/");
+						LauncherActivity.GamePath.setText(selectedDirectory);
 					SharedPreferences.Editor editor = mPref.edit();
-					editor.putString("gamepath", cur_dir+"/");
+					editor.putString("gamepath", selectedDirectory);
 					editor.commit();
 					finish();
 				}

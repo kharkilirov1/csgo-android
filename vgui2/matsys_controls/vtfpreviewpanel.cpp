@@ -11,7 +11,7 @@
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/itexture.h"
 #include "materialsystem/imesh.h"
-#include "tier1/keyvalues.h"
+#include "tier1/KeyValues.h"
 
 // NOTE: This has to be the last file included!
 #include "tier0/memdbgon.h"
